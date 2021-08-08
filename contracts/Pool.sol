@@ -51,6 +51,7 @@ abstract contract Pool is PoolHelper, IERC20, Ticket
 	event InUsePositionChanged(int24 index);
 	event Swap( address msgSender, bool zeroForOne, int256 amount, address to);
 	event Mint(address to, uint256 ticketID, int24 lowestPositionIndex, int24 highestPositionIndex, uint256 positionValue, uint256 amount0, uint256 amount1);
+	event Burn(address owner, uint256 ticketID, int24 lowestPositionIndex, int24 highestPositionIndex, uint256 positionValue, uint256 amount0Transfered, uint256 amount1Transfered);
 ///
 /// VIEW FUNCTIONS
 ///
@@ -316,9 +317,7 @@ abstract contract Pool is PoolHelper, IERC20, Ticket
                     'DesireSwapV0: SWAP_HAS_FAILED._BALANCES_ARE_TO_SMALL');
 			amount0 = int256(balance0) - int256(_lastBalance0);
 			amount1 = int256(balance1) - int256(_lastBalance1);
-			_updateLastBalances(
-                balance0,
-                balance1);
+			_updateLastBalances(balance0, balance1);
             emit Swap( msg.sender, zeroForOne, amount, to);
         }
 
@@ -341,9 +340,7 @@ abstract contract Pool is PoolHelper, IERC20, Ticket
 			amount0 = int256(balance0) - int256(_lastBalance0);
 			amount1 = int256(balance1) - int256(_lastBalance1);
             //!!
-			_updateLastBalances(
-                balance0,
-                balance1);
+			_updateLastBalances(balance0, balance1);
             emit Swap( msg.sender, zeroForOne, amount, to);
         } 
 
@@ -382,9 +379,7 @@ abstract contract Pool is PoolHelper, IERC20, Ticket
 			amount0 = int256(balance0) - int256(_lastBalance0);
 			amount1 = int256(balance1) - int256(_lastBalance1);
 			//!!
-			_updateLastBalances(
-                balance0,
-                balance1);
+			_updateLastBalances(balance0, balance1);
             emit Swap( msg.sender, zeroForOne, amount, to);
         }
         
@@ -419,9 +414,7 @@ abstract contract Pool is PoolHelper, IERC20, Ticket
 			amount0 = int256(balance0) - int256(_lastBalance0);
 			amount1 = int256(balance1) - int256(_lastBalance1);		
 			//!!
-            _updateLastBalances(
-                balance0,
-                balance1);
+            _updateLastBalances(balance0, balance1);
             emit Swap( msg.sender, zeroForOne, amount, to);
         }
     }
@@ -475,9 +468,7 @@ abstract contract Pool is PoolHelper, IERC20, Ticket
             require(balance0 >= _lastBalance0 + amount0 && balance1 >= _lastBalance1 + amount1, 'DesireSwapV0: BALANCES_ARE_TO_LOW');
             //!!!
             emit Mint(to, ticketID, lowestPositionIndex, highestPositionIndex, positionValue, amount0, amount1);
-            _updateLastBalances(
-                balance0,
-                balance1);
+            _updateLastBalances(balance0, balance1);
         }else if(highestPositionIndex < usingPosition)
         {
             // in this case positions.reserve0 should be 0
@@ -502,9 +493,7 @@ abstract contract Pool is PoolHelper, IERC20, Ticket
             //???
             require(balance0 >= _lastBalance0 + amount0 && balance1 >= _lastBalance1 + amount1, 'DesireSwapV0: BALANCES_ARE_TO_LOW');
             emit Mint(to, ticketID, lowestPositionIndex, highestPositionIndex, positionValue, amount0, amount1);
-            _updateLastBalances(
-                balance0,
-                balance1);
+            _updateLastBalances(balance0, balance1);
             
         }else
         {
@@ -528,7 +517,7 @@ abstract contract Pool is PoolHelper, IERC20, Ticket
                 _addAddPositionReserves(i, positionValue, 0);                 
             }
 
-            for(int24 i = usingPosition - 1 ; i >= lowestPositionIndex; i--){
+            for(int24 i = usingPosition - 1; i >= lowestPositionIndex; i--){
 				// in this cases positions.reserve0 should be 0
                  if(positions[i].activated == false) activate(i);
                 (uint256 reserve0, uint256 reserve1) = getPositionReserves(usingPosition); 
@@ -572,13 +561,108 @@ abstract contract Pool is PoolHelper, IERC20, Ticket
             //??
             require(balance0 >= _lastBalance0 + amount0 && balance1 >= _lastBalance1 + amount1, 'DesireSwapV0: BALANCES_ARE_TO_LOW');
             emit Mint(to, ticketID, lowestPositionIndex, highestPositionIndex, positionValue, amount0, amount1);
-            _updateLastBalances(
-                balance0,
-                balance1);
+            _updateLastBalances(balance0, balance1);
         }
     }
 
 ///
 ///	REDEEM LIQ
 ///
+
+function burn (address to, uint256 ticketID) external{
+    require( _exists(ticketID), 'DesireSwapV0: THE_ERC721_DO_NOT_EXISTS');
+    address owner = Ticket.ownerOf(ticketID);
+    require( tx.origin == owner,'DesireSwapV0: THE_TX.ORIGIN_IS_NOT_THE_OWNER');
+    _burn(ticketID);
+
+    (uint256 _lastBalance0, uint256 _lastBalance1) = getLastBalances();
+    int24 usingPosition = inUsePosition;
+        
+    TicketData memory data = _ticketData[ticketID];
+    int24 highestPositionIndex = data.highestPositionIndex;
+    int24 lowestPositionIndex = data.lowestPositionIndex;
+	uint256 amount0ToTransfer = 0;
+	uint256 amount1ToTransfer = 0;
+
+    if(lowestPositionIndex > usingPosition){
+        for(int24 i = lowestPositionIndex; i <= highestPositionIndex; i++){
+            uint256 supply = _ticketSupplyData[ticketID][i];
+			uint256 amount0ToTransferHelp = supply*positions[i].reserve0/positions[i].supplyCoefficient;
+            amount0ToTransfer += amount0ToTransferHelp;
+            //!!
+            _subSubPositionReserves(i, amount0ToTransferHelp, 0);
+            //!!
+            positions[i].supplyCoefficient -= supply;
+        }
+            //!!!
+            _safeTransfer(token0, to, amount0ToTransfer);
+            uint256 balance0 = IERC20(token0).balanceOf(address(this));
+            uint256 balance1 = IERC20(token1).balanceOf(address(this));
+            //???
+            require(balance0 >= _lastBalance0 - amount0ToTransfer && balance1 >= _lastBalance1, 'DesireSwapV0: BALANCES_ARE_TO_LOW');
+            emit Burn(owner, ticketID, lowestPositionIndex, highestPositionIndex, data.positionValue, amount0ToTransfer, amount1ToTransfer);
+            //!!!
+            _updateLastBalances(balance0, balance1);
+    } else if(highestPositionIndex > usingPosition){
+        for(int24 i = highestPositionIndex; i >= lowestPositionIndex; i--){
+            uint256 supply = _ticketSupplyData[ticketID][i];
+			uint256 amount1ToTransferHelp = supply*positions[i].reserve1/positions[i].supplyCoefficient;
+            amount1ToTransfer += amount1ToTransferHelp;
+            //!!
+            _subSubPositionReserves(i, 0, amount1ToTransfer);
+            //!!
+            positions[i].supplyCoefficient -= supply;
+        }
+        //!!!
+        _safeTransfer(token1, to, amount1ToTransfer);
+        uint256 balance0 = IERC20(token0).balanceOf(address(this));
+        uint256 balance1 = IERC20(token1).balanceOf(address(this));
+        //???
+        require(balance0 >= _lastBalance0 && balance1 >= _lastBalance1 - amount1ToTransfer, 'DesireSwapV0: BALANCES_ARE_TO_LOW');
+        emit Burn(owner, ticketID, lowestPositionIndex, highestPositionIndex, data.positionValue, amount0ToTransfer, amount1ToTransfer);
+        //!!!
+        _updateLastBalances(balance0, balance1);
+    } else
+    {
+        for(int24 i = lowestPositionIndex; i < usingPosition; i++){
+            uint256 supply = _ticketSupplyData[ticketID][i];
+			uint256 amount0ToTransferHelp = supply*positions[i].reserve0/positions[i].supplyCoefficient;
+            amount0ToTransfer += amount0ToTransferHelp;
+            //!!
+            _subSubPositionReserves(i, amount0ToTransferHelp, 0);
+            //!!
+            positions[i].supplyCoefficient -= supply;
+        }
+        for(int24 i = highestPositionIndex; i > usingPosition; i--){
+            uint256 supply = _ticketSupplyData[ticketID][i];
+			uint256 amount1ToTransferHelp = supply*positions[i].reserve1/positions[i].supplyCoefficient;
+            amount1ToTransfer += amount1ToTransferHelp;
+            //!!
+            _subSubPositionReserves(i, 0, amount1ToTransfer);
+            //!!
+            positions[i].supplyCoefficient -= supply;
+        }
+            
+        uint256 supply = _ticketSupplyData[ticketID][usingPosition];
+		uint256 amount0ToTransferHelp = supply*positions[usingPosition].reserve0/positions[usingPosition].supplyCoefficient;
+        uint256 amount1ToTransferHelp = supply*positions[usingPosition].reserve1/positions[usingPosition].supplyCoefficient;
+        amount0ToTransfer += amount0ToTransferHelp;
+        amount1ToTransfer += amount1ToTransferHelp;
+        _subSubPositionReserves(usingPosition, amount0ToTransferHelp, amount1ToTransferHelp);
+        positions[usingPosition].supplyCoefficient -= supply;
+
+		//!!!
+        _safeTransfer(token0, to, amount0ToTransfer);
+        _safeTransfer(token1, to, amount1ToTransfer);
+
+        uint256 balance0 = IERC20(token0).balanceOf(address(this));
+        uint256 balance1 = IERC20(token1).balanceOf(address(this));
+        //???
+        require(balance0 >= _lastBalance0 - amount0ToTransfer && balance1 >= _lastBalance1 - amount1ToTransfer, 'DesireSwapV0: BALANCES_ARE_TO_LOW');
+        
+		emit Burn(owner, ticketID, lowestPositionIndex, highestPositionIndex, data.positionValue, amount0ToTransfer, amount1ToTransfer);
+        //!!!
+        _updateLastBalances(balance0, balance1);
+        }
+    }
 }
