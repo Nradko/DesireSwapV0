@@ -31,7 +31,7 @@ contract Pool is PoolHelper, Ticket
 	struct Position {
 		uint256 reserve0;
 		uint256 reserve1;
-		uint256 sqrtPriceBottom;    //  sqrt(lower position bound price) * 10**18 // price of token1 in token0.
+		uint256 sqrtPriceBottom;    //  sqrt(lower position bound price) * 10**18 // price of token1 in token0 for 1 token0 i get priceBottom of tokens1
 		uint256 sqrtPriceTop;
 		uint256 supplyCoefficient; 	//
 		bool activated;
@@ -109,7 +109,7 @@ contract Pool is PoolHelper, Ticket
 	function _addAddPositionReserves(
 		int24 index,
 		uint256 toAdd0, uint256 toAdd1)
-		internal
+		private
 	{
 		positions[index].reserve0 += toAdd0;
 		positions[index].reserve1 += toAdd1;
@@ -120,7 +120,7 @@ contract Pool is PoolHelper, Ticket
 	function _subAddPositionReserves (
 		int24 index,
 		uint256 toSub0, uint256 toAdd1)
-		internal
+		private
 	{
 		positions[index].reserve0 -= toSub0;
 		positions[index].reserve1 += toAdd1;
@@ -131,7 +131,7 @@ contract Pool is PoolHelper, Ticket
 	function _addSubPositionReserves (
 		int24 index,
 		uint256 toAdd0, uint256 toSub1)
-		internal
+		private
 	{
 		positions[index].reserve0 += toAdd0;
 		positions[index].reserve1 -= toSub1;
@@ -142,7 +142,7 @@ contract Pool is PoolHelper, Ticket
 	function _subSubPositionReserves (
 		int24 index,
 		uint256 toSub0, uint256 toSub1)
-		internal
+		private
 	{
 		positions[index].reserve0 -= toSub0;
 		positions[index].reserve1 -= toSub1;
@@ -155,25 +155,20 @@ contract Pool is PoolHelper, Ticket
 ///
 	function activate(int24 index) private{
 		require(positions[index].activated == false, 'DesireSwapV0: THIS_POSITION_WAS_ALREADY_ACTIVATED');
-		Position memory positionToActivate;
-		positionToActivate.reserve0 = 0;
-		positionToActivate.reserve1 = 0;
-		positionToActivate.supplyCoefficient = 0;
 		if( index > highestActivatedPosition ){
-		highestActivatedPosition = index;
-		if (positions[index-1].activated == false) activate(index-1);
-		positionToActivate.sqrtPriceBottom = positions[index-1].sqrtPriceTop;
-		positionToActivate.sqrtPriceTop = positionToActivate.sqrtPriceBottom*sqrtPositionMultiplier/10**18;
-		positionToActivate.activated = true;
+			highestActivatedPosition = index;
+			if (positions[index-1].activated == false) activate(index-1);
+			positions[index].sqrtPriceBottom = positions[index-1].sqrtPriceTop;
+			positions[index].sqrtPriceTop = positions[index].sqrtPriceBottom*sqrtPositionMultiplier/10**18;
+			positions[index].activated = true;
 		}
 		else if(index < lowestActivatedPosition){
-		lowestActivatedPosition = index;
-		if(positions[index+1].activated == false) activate(index +1);
-		positionToActivate.sqrtPriceTop = positions[index+1].sqrtPriceBottom;
-		positionToActivate.sqrtPriceBottom = positionToActivate.sqrtPriceTop*10**18/sqrtPositionMultiplier;
-		positionToActivate.activated = true;
+			lowestActivatedPosition = index;
+			if(positions[index+1].activated == false) activate(index +1);
+			positions[index].sqrtPriceTop = positions[index+1].sqrtPriceBottom;
+			positions[index].sqrtPriceBottom = positions[index].sqrtPriceTop*10**18/sqrtPositionMultiplier;
+			positions[index].activated = true;
 		}
-		positions[index] = positionToActivate;
 		emit PositionActivated(index);
 	}
 
@@ -202,7 +197,7 @@ contract Pool is PoolHelper, Ticket
         int24 index,
         address to,
         bool zeroForOne,
-        uint256 amountOut) private returns( uint256 amountIn)
+        uint256 amountOut) internal returns( uint256 amountIn)
     {
         require(index == inUsePosition, 'DesireSwapV0: WRONG_INDEX');
 		swapInPositionData memory help = swapInPositionData({index: index, to: to, zeroForOne: zeroForOne, amountOut: amountOut,
@@ -244,12 +239,12 @@ contract Pool is PoolHelper, Ticket
 
             help.reserve1 = positions[help.index].reserve1;
             if( help.reserve1 == 0){
-                inUsePosition--; // to powiina robic funckja
+                inUsePosition++; // to powiina robic funckja
                 emit InUsePositionChanged(help.index+1);
             }
 
-            help.balance0 = IERC20(token0).balanceOf(address(this));
-            help.balance1 = IERC20(token1).balanceOf(address(this));            
+            help.balance0 = IERC20(_token0).balanceOf(address(this));
+            help.balance1 = IERC20(_token1).balanceOf(address(this));            
             //???
             require(help.balance0 >= _lastBalance0 + amountIn && help.balance1 >= _lastBalance1 - help.amountOut, 'DesireSwapV0: TO_LOW_BALANCES');
             //!!!
@@ -286,12 +281,12 @@ contract Pool is PoolHelper, Ticket
             help.reserve0 = positions[help.index].reserve0;
             //??
             if( help.reserve0 == 0){
-                inUsePosition++;   // to powinna robic funkcja
+                inUsePosition--;   // to powinna robic funkcja
                 emit InUsePositionChanged(help.index-1);
             }
 
-            help.balance0 = IERC20(token0).balanceOf(address(this));
-            help.balance1 = IERC20(token1).balanceOf(address(this));   
+            help.balance0 = IERC20(_token0).balanceOf(address(this));
+            help.balance1 = IERC20(_token1).balanceOf(address(this));   
             //??
             require(help.balance0 >= _lastBalance0 -help.amountOut && help.balance1 >= _lastBalance1 + amountIn, 'DesireSwapV0: TO_LOW_BALANCES');
             //!!
@@ -507,13 +502,13 @@ contract Pool is PoolHelper, Ticket
 		_ticketData[help.ticketID].positionValue = help.positionValue;
 
 
-        if(help.lowestPositionIndex > usingPosition){
+        if(help.highestPositionIndex < usingPosition){
 			//in this case positions.reserve1 should be 0
             uint256 range = uint256(int256(help.highestPositionIndex - help.lowestPositionIndex)) + 1;
             amount0 = range * help.positionValue;
             amount1 = 0;
 
-            for(int24 i = help.lowestPositionIndex; i <= help.highestPositionIndex; i++){
+            for(int24 i = help.highestPositionIndex; i >= help.lowestPositionIndex; i--){
                 if (positions[i].activated == false) activate(i);    
                 (help.reserve0, help.reserve1) = getPositionReserves(usingPosition); 
                 (help.sqrtPriceBottom, help.sqrtPriceTop) = getPositionSqrtPrices(usingPosition);
@@ -532,12 +527,12 @@ contract Pool is PoolHelper, Ticket
             //!!!
             emit Mint(help.to, help.ticketID, help.lowestPositionIndex, help.highestPositionIndex, help.positionValue, amount0, amount1);
             _updateLastBalances(help.balance0, help.balance1);
-        }else if(help.highestPositionIndex < usingPosition)
+        }else if(help.lowestPositionIndex > usingPosition)
         {
             // in this case positions.reserve0 should be 0
 			amount0 = 0;
             amount1 = 0;
-            for(int24 i = help.highestPositionIndex; i >= help.lowestPositionIndex; i--){
+            for(int24 i = help.lowestPositionIndex; i <= help.highestPositionIndex; i++){
                 if(positions[i].activated == false) activate(i);
                 (help.reserve0, help.reserve1) = getPositionReserves(usingPosition); 
                 (help.sqrtPriceBottom, help.sqrtPriceTop) = getPositionSqrtPrices(usingPosition);
@@ -565,7 +560,7 @@ contract Pool is PoolHelper, Ticket
 			uint256 amount0ToAdd;
 			uint256 amount1ToAdd;
 
-            for(int24 i = usingPosition + 1; i <= help.highestPositionIndex; i++){
+            for(int24 i = usingPosition - 1; i >= help.lowestPositionIndex; i--){
                 // in this cases positions.reserve1 should be 0
 				if (positions[i].activated == false) activate(i);    
                 (help.reserve0, help.reserve1) = getPositionReserves(usingPosition); 
@@ -581,7 +576,7 @@ contract Pool is PoolHelper, Ticket
                 _addAddPositionReserves(i, help.positionValue, 0);                 
             }
 			
-			for(int24 i = usingPosition - 1; i >= help.lowestPositionIndex; i--){
+			for(int24 i = usingPosition + 1; i >= help.highstPositionIndex; i++){
 				// in this cases positions.help.reserve0 should be 0
                  if(positions[i].activated == false) activate(i);
                 (help.reserve0, help.reserve1) = getPositionReserves(usingPosition); 
@@ -607,13 +602,13 @@ contract Pool is PoolHelper, Ticket
             amount1ToAdd = help.balance1 - lastBalance1 - amount1;
 			uint256 price0 = _currentPrice(help.reserve0, help.reserve1, help.sqrtPriceBottom, help.sqrtPriceTop);
 			uint256 price1 = _currentPrice(help.reserve0 +amount0ToAdd, help.reserve1 + amount1ToAdd, help.sqrtPriceBottom, help.sqrtPriceTop);
-			require(amount0ToAdd + amount1ToAdd*price0 >= help.positionValue);
-			require(amount0ToAdd + amount1ToAdd*price1 >= help.positionValue);
+			require(amount0ToAdd + amount1ToAdd*price0/10**18 >= help.positionValue);
+			require(amount0ToAdd + amount1ToAdd*price1/10**18 >= help.positionValue);
 			amount0 += amount0ToAdd;
 			amount1 += amount1ToAdd;
 
             if(positions[usingPosition].supplyCoefficient != 0){
-				_ticketSupplyData[help.ticketID][usingPosition] = positions[usingPosition].supplyCoefficient * (amount0ToAdd + amount1ToAdd*price1)/(help.reserve0 + help.reserve1*price1);             
+				_ticketSupplyData[help.ticketID][usingPosition] = positions[usingPosition].supplyCoefficient * (amount0ToAdd + amount1ToAdd*price1/10**18)/(help.reserve0 + help.reserve1*price1/10**18);             
             } else 
             {
                 _ticketSupplyData[help.ticketID][usingPosition] = help.positionValue;                
@@ -656,8 +651,8 @@ contract Pool is PoolHelper, Ticket
 		uint256 balance0;
 		uint256 balance1;
 
-		if(lowestPositionIndex > usingPosition){
-			for(int24 i = lowestPositionIndex; i <= highestPositionIndex; i++){
+		if(highestPositionIndex < usingPosition){
+			for(int24 i = highestPositionIndex; i >= highestPositionIndex; i--){
 				help.supply = _ticketSupplyData[ticketID][i];
 				help.amount0ToTransferHelp = help.supply*positions[i].reserve0/positions[i].supplyCoefficient;
 				help.amount0ToTransfer += help.amount0ToTransferHelp;
@@ -675,8 +670,8 @@ contract Pool is PoolHelper, Ticket
 				emit Burn(owner, ticketID, lowestPositionIndex, highestPositionIndex, data.positionValue, help.amount0ToTransfer, help.amount1ToTransfer);
 				//!!!
 				_updateLastBalances(balance0, balance1);
-		} else if(highestPositionIndex > usingPosition){
-			for(int24 i = highestPositionIndex; i >= lowestPositionIndex; i--){
+		} else if(lowestPositionIndex > usingPosition){
+			for(int24 i = lowestPositionIndex; i <= highestPositionIndex; i++){
 				help.supply = _ticketSupplyData[ticketID][i];
 				help.amount1ToTransferHelp = help.supply*positions[i].reserve1/positions[i].supplyCoefficient;
 				help.amount1ToTransfer += help.amount1ToTransferHelp;
@@ -696,7 +691,7 @@ contract Pool is PoolHelper, Ticket
 			_updateLastBalances(balance0, balance1);
 		} else
 		{
-			for(int24 i = lowestPositionIndex; i < usingPosition; i++){
+			for(int24 i = highestPositionIndex; i > usingPosition; i--){
 				help.supply = _ticketSupplyData[ticketID][i];
 				help.amount0ToTransferHelp = help.supply*positions[i].reserve0/positions[i].supplyCoefficient;
 				help.amount0ToTransfer += help.amount0ToTransferHelp;
@@ -705,7 +700,7 @@ contract Pool is PoolHelper, Ticket
 				//!!
 				positions[i].supplyCoefficient -= help.supply;
 			}
-			for(int24 i = highestPositionIndex; i > usingPosition; i--){
+			for(int24 i = lowestPositionIndex; i < usingPosition; i++){
 				help.supply = _ticketSupplyData[ticketID][i];
 				help.amount1ToTransferHelp = help.supply*positions[i].reserve1/positions[i].supplyCoefficient;
 				help.amount1ToTransfer += help.amount1ToTransferHelp;
