@@ -3,6 +3,17 @@ pragma solidity ^0.8.0;
 
 contract PoolHelper {
 
+    struct helpData{
+        uint256 lastBalance0;
+		uint256 lastBalance1;
+		uint256 balance0;
+		uint256 balance1;
+        uint256 value00;
+        uint256 value01;
+        uint256 value10;
+        uint256 value11;
+    }
+
     function sqrt(uint y) internal pure returns (uint z) {
         if (y > 3) {
             z = y;

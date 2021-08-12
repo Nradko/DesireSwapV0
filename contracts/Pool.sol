@@ -5,7 +5,7 @@ import "./library/PoolHelper.sol";
 import "./library/IERC20.sol";
 import "./library/Ticket.sol";
 
-contract PoolV2 is PoolHelper, Ticket
+contract Pool is PoolHelper, Ticket
 {
 	bool public protocolFeeIsOn;
 
@@ -189,16 +189,6 @@ contract PoolV2 is PoolHelper, Ticket
 	// !! IT TRANSFERS TOKENS OUT OF POOL !!
 	// !! IT MODIFIES IMPORTANT DATA !!
 
-	struct swapInPositionData{
-		int24 index;
-		address to;
-		bool zeroForOne;
-		uint256 amountOut;
-		uint256 reserve0;
-		uint256 reserve1;
-		uint256 balance0;
-		uint256 balance1;
-	}
 	function _swapInPosition(
         int24 index,
         address to,
@@ -206,46 +196,48 @@ contract PoolV2 is PoolHelper, Ticket
         uint256 amountOut) internal returns( uint256 amountIn)
     {
         require(index == inUsePosition, 'DesireSwapV0: WRONG_INDEX');
-		swapInPositionData memory help = swapInPositionData({index: index, to: to, zeroForOne: zeroForOne, amountOut: amountOut,
-			reserve0: 0, reserve1: 0, balance0: 0, balance1: 0});
-        (help.reserve0, help.reserve1) = getPositionReserves(help.index);
-        (uint256 sqrtBottom, uint256 sqrtTop) = getPositionSqrtPrices(help.index);
-        uint256 L = LiqCoefficient(help.reserve0, help.reserve1, sqrtBottom, sqrtTop);
+		helpData memory h = helpData({
+			lastBalance0:lastBalance0, lastBalance1:lastBalance1,
+			balance0:0, balance1:0,
+			value00: positions[index].reserve0, value01: positions[index].reserve1,
+			value10: positions[index].sqrtPriceBottom, value11: positions[index].sqrtPriceTop
+			});
+        require( ( zeroForOne == true && amountOut <= h.value01) ||
+                 ( zeroForOne == false && amountOut <= h.value00), 'DesireSwapV0: INSUFFICIENT_POSITION_LIQUIDITY');        
+		
+		uint256 L = LiqCoefficient(h.value00, h.value01, h.value10, h.value11);
         uint256 collectedFee;
-
-        require( ( help.zeroForOne == true && help.amountOut <= help.reserve1) ||
-                 ( help.zeroForOne == false && help.amountOut <= help.reserve0), 'DesireSwapV0: INSUFFICIENT_POSITION_LIQUIDITY');
-        
-        uint256 amountInHelp = _amountIn(help.zeroForOne, help.reserve0, help.reserve1, sqrtBottom, sqrtTop, help.amountOut, L); // do not include fees;
+		uint256 amountInHelp = _amountIn(zeroForOne, h.value00, h.value01, h.value10, h.value11, amountOut, L); // do not include fees;
         uint256 collectedProtocolFee = 0;
+
         amountIn = amountInHelp*10**36/(10**36 - feePercentage);
         collectedFee = amountIn - amountInHelp;
         if (protocolFeeIsOn)
             collectedProtocolFee = (collectedFee * protocolFeePercentage)/10**36;
         // token0 for token1 // token0 in; token1 out;
-        if( help.zeroForOne) {
+        if( zeroForOne) {
             //??
-            require(LiqCoefficient(help.reserve0 + amountInHelp, help.reserve1 - help.amountOut, sqrtBottom, sqrtTop) >= L,
+            require(LiqCoefficient(h.value00 + amountInHelp, h.value01 - amountOut, h.value10, h.value11) >= L,
              'DesireSwapV0: LIQ_COEFFICIENT_IS_TO_LOW'); //assure that after swap there is more or equal liquidity. If _amountIn works correctly it can be removed.
             //!!
             _addSubPositionReserves(
-                help.index,
+                index,
                 amountIn - collectedProtocolFee,
-                help.amountOut);
+                amountOut);
         }
         // token1 for token0 // token1 in; token0 out;
-        if( help.zeroForOne == false) {    
+        if( zeroForOne == false) {    
             //??
-            require(LiqCoefficient(help.reserve0 - help.amountOut, help.reserve1 + amountInHelp, sqrtBottom, sqrtTop) >= L,
+            require(LiqCoefficient(h.value00 - amountOut, h.value01 + amountInHelp, h.value00, h.value11) >= L,
             'DesireSwapV0: LIQ_COEFFICIENT_IS_TO_LOW'); //assure that after swao there is more or equal liquidity. If _amountIn works correctly it can be removed.            
             //!!
             _subAddPositionReserves(
-                help.index,
-                help.amountOut,
+                index,
+                amountOut,
                 amountIn - collectedProtocolFee);
         }
-        emit SwapInPosition(msg.sender, help.index, help.zeroForOne, amountIn, help.amountOut, help.to);
-		delete help;
+        emit SwapInPosition(msg.sender, index, zeroForOne, amountIn, amountOut, to);
+		delete h;
     }
 
 
@@ -253,21 +245,7 @@ contract PoolV2 is PoolHelper, Ticket
     // The calldata is not yet used. SwapRoutes!!!!!!!
     // amount > 0 amount is exact token inflow, amount < 0 amount is exact token outflow.
     // sqrtPriceLimit is price
-    struct swapData{
-		address to;
-		bool zeroForOne;
-		int256 amount;
-		int256 amount0;
-		int256 amount1;
-		uint256 balance0;
-		uint256 balance1;
-		uint256 usingReserve;
-		uint256 remained;
-		uint256 reserve0;
-		uint256 reserve1;
-		uint256 sqrtBottom;
-		uint256 sqrtTop;
-	}
+
 	function swap(
         address to,
         bool zeroForOne,
@@ -276,124 +254,100 @@ contract PoolV2 is PoolHelper, Ticket
         //bytes calldata data
     ) external returns (int256, int256)
     {        
-        swapData memory data = 
-		swapData({to: to, zeroForOne: zeroForOne, amount: amount, amount0: 0, amount1: 0,
-			balance0: 0, balance1: 0, usingReserve: 0, remained: 0, reserve0: 0, reserve1: 0,
-			sqrtBottom: 0, sqrtTop: 0});
-		(uint256 _lastBalance0, uint256 _lastBalance1) = getLastBalances();
-        uint256 amountRecieved =0;
+        helpData memory h = helpData({
+			lastBalance0: lastBalance0, lastBalance1:lastBalance1,
+			balance0: 0, balance1: 0,
+			value00: 0, value01: 0,
+			value10: 0, value11: 0});
+		uint256 usingReserve;
+        uint256 amountRecieved;
+		uint256 remained;
         int24 usingPosition = inUsePosition;
         
         //
         // tokensForExactTokens
         //
         // token0 In, token1 Out, tokensForExactTokens
-        if(data.amount < 0){
-            data.remained = uint256(-data.amount);
-            if( data.zeroForOne){
-                require(data.remained <= totalReserve1);
+        if(amount <= 0){
+            remained = uint256(-amount);
+            if( zeroForOne){
+                require(remained <= totalReserve1);
                 ///!!! token transfer
-                _safeTransfer(token1, data.to, data.remained);
-                data.usingReserve = positions[usingPosition].reserve1;        
+                _safeTransfer(token1, to, remained);
+                usingReserve = positions[usingPosition].reserve1;        
             }
             // token1 In, token0 Out, tokensForExactTokens
             else{
-                require(data.remained <= totalReserve0);
+                require(remained <= totalReserve0);
                 ///!!! token transfer
-                _safeTransfer(token0, data.to, data.remained);
-                data.usingReserve = positions[usingPosition].reserve0;        
+                _safeTransfer(token0, to, remained);
+                usingReserve = positions[usingPosition].reserve0;        
                 //???
             }
-                while( data.remained > data.usingReserve) {
-                    amountRecieved += _swapInPosition( usingPosition, data.to, data.zeroForOne, data.usingReserve);
-                    data.remained -= data.usingReserve;
+                while( remained > usingReserve) {
+                    amountRecieved += _swapInPosition( usingPosition, to, zeroForOne, usingReserve);
+                    remained -= usingReserve;
                     usingPosition = inUsePosition;
-                    data.usingReserve = data.zartoToOne ? positions[usingPosition].reserve1 : positions[usingPosition].reserve0;
+                    usingReserve = zeroForOne ? positions[usingPosition].reserve1 : positions[usingPosition].reserve0;
                 }
-                amountRecieved +=_swapInPosition( usingPosition, data.to, data.zeroForOne, data.remained);
-                data.balance0 = IERC20(token0).balanceOf(address(this));
-                data.balance1 = IERC20(token1).balanceOf(address(this));
-            if( data.zeroForOne){
-                require( data.balance0 >= _lastBalance0 + amountRecieved && data.balance1 >= _lastBalance1 - uint256(-data.amount),
+                amountRecieved +=_swapInPosition( usingPosition, to, zeroForOne, remained);
+                h.balance0 = IERC20(token0).balanceOf(address(this));
+                h.balance1 = IERC20(token1).balanceOf(address(this));
+            if( zeroForOne){
+                require( h.balance0 >= h.lastBalance0 + amountRecieved && h.balance1 >= h.lastBalance1 - uint256(-amount),
                         'DesireSwapV0: SWAP_HAS_FAILED._BALANCES_ARE_TO_SMALL');
             } else {
-                require( data.balance1 >= _lastBalance1 + amountRecieved && data.balance0 >= _lastBalance0 - uint256(-data.amount),
+                require( h.balance1 >= h.lastBalance1 + amountRecieved && h.balance0 >= h.lastBalance0 - uint256(-amount),
                         'DesireSwapV0: SWAP_HAS_FAILED._BALANCES_ARE_TO_SMALL');
             }
 
             
         } 
-
-
         //
         //  exactTokensForTokens
         //
         // token0 In, token1 Out, exactTokensForTokens
-        else if( data.zeroForOne && data.amount > 0){
-            data.remained = uint256(data.amount);
-            uint256 predictedFee = data.remained *feePercentage/10**18;
-            (data.reserve0, data.reserve1) = getPositionReserves(usingPosition); 
-            (data.sqrtBottom, data.sqrtTop) = getPositionSqrtPrices(usingPosition); 
-            uint256 L = LiqCoefficient( data.reserve0, data.reserve1, data.sqrtBottom, data.sqrtTop);
+        else{
+            remained = uint256(amount);
+            uint256 predictedFee = remained *feePercentage/10**18;
+            (h.value00, h.value01) = getPositionReserves(usingPosition); 
+            (h.value10, h.value11) = getPositionSqrtPrices(usingPosition);
+            uint256 L = LiqCoefficient( h.value00, h.value01, h.value10, h.value11);
             uint256 amountSend =0;
-            uint256 amountOut = _amountOut(true, data.reserve0, data.reserve1, data.sqrtBottom, data.sqrtTop, data.remained-predictedFee, L);
-            while( amountOut >= data.reserve1) {
-                data.remained -= _swapInPosition(usingPosition, data.to, true, data.reserve1);
-                amountSend +=data.reserve1;
-                predictedFee = data.remained *feePercentage/10**18;
+            uint256 amountOut = _amountOut(zeroForOne, h.value00, h.value01, h.value10, h.value11, remained-predictedFee, L);
+            while( amountOut >= (zeroForOne? h.value01 : h.value00)) {
+                remained -= _swapInPosition(usingPosition, to, zeroForOne, h.value00);
                 usingPosition = inUsePosition;
-                (data.reserve0, data.reserve1) = getPositionReserves(usingPosition);
-                (data.sqrtBottom, data.sqrtTop) = getPositionSqrtPrices(usingPosition);
-                L = LiqCoefficient( data.reserve0, data.reserve1, data.sqrtBottom, data.sqrtTop);
-                amountOut = _amountOut(true, data.reserve0, data.reserve1, data.sqrtBottom, data.sqrtTop, data.remained-predictedFee, L);
+                amountSend += zeroForOne ? h.value01 : h.value00;
+                predictedFee = remained *feePercentage/10**18;
+                (h.value00, h.value01) = getPositionReserves(usingPosition);
+                (h.value10, h.value11) = getPositionSqrtPrices(usingPosition);
+                L = LiqCoefficient( h.value00, h.value01, h.value10, h.value11);
+                amountOut = _amountOut(zeroForOne, h.value00, h.value01, h.value10, h.value11, remained-predictedFee, L);
             }
-            data.remained -= _swapInPosition(usingPosition, data.to, true, amountOut);
+            remained -= _swapInPosition(usingPosition, to, zeroForOne, amountOut);
             amountSend +=amountOut;
-            //!!!
-            _safeTransfer(token1, data.to, amountSend);
-            data.balance0 = IERC20(token0).balanceOf(address(this));
-            data.balance1 = IERC20(token1).balanceOf(address(this));
-            //???
-            require( data.balance0 >= _lastBalance0 + uint256(data.amount) && data.balance1 >= _lastBalance1 - amountSend,
-                    'DesireSwapV0: SWAP_HAS_FAILED._BALANCES_ARE_TO_SMALL');            
-        }
-        
-        // token1 In, token0 Out, exactTokensForTokens
-        else if( data.zeroForOne == false && data.amount > 0){
-            data.remained = uint256(data.amount);
-            uint256 predictedFee = data.remained *feePercentage/10**18;
-            (data.reserve0, data.reserve1) = getPositionReserves(usingPosition); 
-            (data.sqrtBottom, data.sqrtTop) = getPositionSqrtPrices(usingPosition);
-            uint256 L = LiqCoefficient( data.reserve0, data.reserve1, data.sqrtBottom, data.sqrtTop);
-            uint256 amountSend =0;
-            uint256 amountOut = _amountOut(false, data.reserve0, data.reserve1, data.sqrtBottom, data.sqrtTop, data.remained-predictedFee, L);
-            while( amountOut >= data.reserve0) {
-                data.remained -= _swapInPosition(usingPosition, data.to, false, data.reserve0);
-                usingPosition++;
-                amountSend += data.reserve0;
-                predictedFee = data.remained *feePercentage/10**18;
-                (data.reserve0, data.reserve1) = getPositionReserves(usingPosition);
-                (data.sqrtBottom, data.sqrtTop) = getPositionSqrtPrices(usingPosition);
-                L = LiqCoefficient( data.reserve0, data.reserve1, data.sqrtBottom, data.sqrtTop);
-                amountOut = _amountOut(false, data.reserve0, data.reserve1, data.sqrtBottom, data.sqrtTop, data.remained-predictedFee, L);
-            }
-            data.remained -= _swapInPosition(usingPosition, data.to, false, amountOut);
-            amountSend +=amountOut;
-            //!!!
-            _safeTransfer(token0, data.to, amountSend);
 
-            data.balance0 = IERC20(token0).balanceOf(address(this));
-            data.balance1 = IERC20(token1).balanceOf(address(this));
-            //???
-            require( data.balance0 >= _lastBalance0 - amountSend  && data.balance1 >= _lastBalance1 + uint256(data.amount),
-                    'DesireSwapV0: SWAP_HAS_FAILED._BALANCES_ARE_TO_SMALL');
+            //!!!
+                _safeTransfer(zeroForOne ? token1: token0, to, amountSend);
+                h.balance0 = IERC20(token0).balanceOf(address(this));
+                h.balance1 = IERC20(token1).balanceOf(address(this));
+            if( zeroForOne){
+                //???
+                require( h.balance0 >= h.lastBalance0 + uint256(amount) && h.balance1 >= h.lastBalance1 - amountSend,
+                        'DesireSwapV0: SWAP_HAS_FAILED._BALANCES_ARE_TO_SMALL');            
+            }
+            else{
+                //???
+                require( h.balance0 >= h.lastBalance0 - amountSend  && h.balance1 >= h.lastBalance1 + uint256(amount),
+                        'DesireSwapV0: SWAP_HAS_FAILED._BALANCES_ARE_TO_SMALL');
+            }
         }
-		
-        int256 amount0 = int256(data.balance0) - int256(_lastBalance0);
-		int256 amount1 = int256(data.balance1) - int256(_lastBalance1);
-		_updateLastBalances(data.balance0, data.balance1);
-        emit Swap( msg.sender, data.zeroForOne, data.amount, data.to);
-		delete data;
+        int256 amount0 = int256(h.balance0) - int256(h.lastBalance0);
+		int256 amount1 = int256(h.balance1) - int256(h.lastBalance1);
+		_updateLastBalances(h.balance0, h.balance1);
+        emit Swap( msg.sender, zeroForOne, amount, to);
+		delete h;
 		return (amount0, amount1);
     }
 ///
@@ -404,19 +358,33 @@ contract PoolV2 is PoolHelper, Ticket
 	//  It is minted when L is provided.
 	//  It is burned when L is taken.
 
-	struct mintData{
-		address to;
-        int24 lowestPositionIndex;
-        int24 highestPositionIndex;
-        uint256 positionValue;
-		uint256 balance0;
-		uint256 balance1;
-		uint256 ticketID;
-		uint256 reserve0;
-		uint256 reserve1;
-		uint256 sqrtPriceBottom;
-		uint256 sqrtPriceTop;
+	function _printOnTicket0(int24 index, uint256 ticketID, uint256 positionValue) private{ 
+		if (positions[index].activated == false) activate(index);    
+		if(positions[index].supplyCoefficient != 0){
+			_ticketSupplyData[ticketID][index] = positions[index].supplyCoefficient*positionValue/positions[index].reserve0;
+		}
+		else{
+			_ticketSupplyData[ticketID][index] = positionValue;
+		}
+		positions[index].supplyCoefficient += _ticketSupplyData[ticketID][index];
+		//!!
+		_addAddPositionReserves(index, positionValue, 0); 
 	}
+	function _printOnTicket1(int24 index, uint256 ticketID, uint256 positionValue)
+	private returns(uint256 amount1ToAdd){ 
+		if(positions[index].activated == false) activate(index);
+		amount1ToAdd = positionValue /sqrtPositionMultiplier**2/10**36;
+		if(positions[index].supplyCoefficient != 0){
+			_ticketSupplyData[ticketID][index] = positions[index].supplyCoefficient*amount1ToAdd/positions[index].reserve1;
+		}
+		else{
+			_ticketSupplyData[ticketID][index] = positionValue;
+		}
+		positions[index].supplyCoefficient += _ticketSupplyData[ticketID][index];
+		//!!
+		_addAddPositionReserves(index, 0, amount1ToAdd); 
+	}
+		
 	function mint(
         address to,
         int24 lowestPositionIndex,
@@ -426,246 +394,143 @@ contract PoolV2 is PoolHelper, Ticket
         returns(uint256 amount0 , uint256 amount1)
     {
         require(highestPositionIndex >= lowestPositionIndex);
-		mintData memory help = mintData({to: to, lowestPositionIndex: lowestPositionIndex, highestPositionIndex: highestPositionIndex, positionValue: positionValue,
-			balance0: 0, balance1: 0, ticketID: 0, reserve0: 0, reserve1: 0, sqrtPriceBottom: 0, sqrtPriceTop: 0});
-        (uint256 _lastBalance0, uint256 _lastBalance1) = getTotalReserves();
-        help.balance0 = IERC20(token0).balanceOf(address(this));
-        help.balance1 = IERC20(token1).balanceOf(address(this));
-		help.ticketID = _mint(help.to);
+		helpData memory h = helpData({
+			lastBalance0: lastBalance0, lastBalance1: lastBalance1,
+			balance0: 0, balance1: 0,
+			value00: 0, value01: 0,
+			value10: 0, value11: 0});
+        (h.lastBalance0, h.lastBalance1) = getTotalReserves();
+        h.balance0 = IERC20(token0).balanceOf(address(this));
+        h.balance1 = IERC20(token1).balanceOf(address(this));
+		uint256 ticketID = _mint(to);
         int24 usingPosition = inUsePosition;   
-		_ticketData[help.ticketID].lowestPositionIndex = help.lowestPositionIndex;
-		_ticketData[help.ticketID].highestPositionIndex = help.highestPositionIndex;
-		_ticketData[help.ticketID].positionValue = help.positionValue;
+		_ticketData[ticketID].lowestPositionIndex = lowestPositionIndex;
+		_ticketData[ticketID].highestPositionIndex = highestPositionIndex;
+		_ticketData[ticketID].positionValue = positionValue;
 
-
-        if(help.highestPositionIndex < usingPosition){
+        if(highestPositionIndex < usingPosition){
 			//in this case positions.reserve1 should be 0
-            uint256 range = uint256(int256(help.highestPositionIndex - help.lowestPositionIndex)) + 1;
-            amount0 = range * help.positionValue;
-            amount1 = 0;
-
-            for(int24 i = help.highestPositionIndex; i >= help.lowestPositionIndex; i--){
-                if (positions[i].activated == false) activate(i);    
-                (help.reserve0, help.reserve1) = getPositionReserves(usingPosition); 
-                (help.sqrtPriceBottom, help.sqrtPriceTop) = getPositionSqrtPrices(usingPosition);
-                if(positions[i].supplyCoefficient != 0){
-                    _ticketSupplyData[help.ticketID][i] = positions[i].supplyCoefficient*help.positionValue/help.reserve0;
-                }
-                else{
-                    _ticketSupplyData[help.ticketID][i] = help.positionValue;
-                }
-                positions[i].supplyCoefficient += _ticketSupplyData[help.ticketID][i];
-				//!!
-                _addAddPositionReserves(i, help.positionValue, 0);                
+            amount0 = (uint256(int256(highestPositionIndex - lowestPositionIndex)) + 1) * positionValue;
+            for(int24 i = highestPositionIndex; i >= lowestPositionIndex; i--){
+                _printOnTicket0(i, ticketID, positionValue);                
             }
-            //???
-            require(help.balance0 >= _lastBalance0 + amount0 && help.balance1 >= _lastBalance1 + amount1, 'DesireSwapV0: BALANCES_ARE_TO_LOW');
-            //!!!
-            emit Mint(help.to, help.ticketID, help.lowestPositionIndex, help.highestPositionIndex, help.positionValue, amount0, amount1);
-            _updateLastBalances(help.balance0, help.balance1);
-        }else if(help.lowestPositionIndex > usingPosition)
+        }
+		else if(lowestPositionIndex > usingPosition)
         {
             // in this case positions.reserve0 should be 0
-			amount0 = 0;
-            amount1 = 0;
-            for(int24 i = help.lowestPositionIndex; i <= help.highestPositionIndex; i++){
-                if(positions[i].activated == false) activate(i);
-                (help.reserve0, help.reserve1) = getPositionReserves(usingPosition); 
-                (help.sqrtPriceBottom, help.sqrtPriceTop) = getPositionSqrtPrices(usingPosition);
-                uint256 amount1ToAdd = help.positionValue /sqrtPositionMultiplier**2/10**36;
-                amount1 += amount1ToAdd;
-                if(positions[i].supplyCoefficient != 0){
-                    _ticketSupplyData[help.ticketID][i] = positions[i].supplyCoefficient*amount1ToAdd/help.reserve1;
-                }
-                else{
-					_ticketSupplyData[help.ticketID][i] = help.positionValue;
-                }
-                positions[i].supplyCoefficient += _ticketSupplyData[help.ticketID][i];
-				//!!
-                _addAddPositionReserves(i, 0, amount1ToAdd); 
+            for(int24 i = lowestPositionIndex; i <= highestPositionIndex; i++){
+                amount1 +=  _printOnTicket1(i, ticketID, positionValue);
             }
-            //???
-            require(help.balance0 >= _lastBalance0 + amount0 && help.balance1 >= _lastBalance1 + amount1, 'DesireSwapV0: BALANCES_ARE_TO_LOW');
-            emit Mint(help.to, help.ticketID, help.lowestPositionIndex, help.highestPositionIndex, help.positionValue, amount0, amount1);
-            _updateLastBalances(help.balance0, help.balance1);
             
         }else
         {
-            amount0 = uint256(int256(help.highestPositionIndex - inUsePosition)) * help.positionValue;
-            amount1 = 0;
-			uint256 amount0ToAdd;
-			uint256 amount1ToAdd;
+            amount0 = uint256(int256(highestPositionIndex - inUsePosition)) * positionValue;
 
-            for(int24 i = usingPosition - 1; i >= help.lowestPositionIndex; i--){
-                // in this cases positions.reserve1 should be 0
-				if (positions[i].activated == false) activate(i);    
-                (help.reserve0, help.reserve1) = getPositionReserves(usingPosition); 
-                (help.sqrtPriceBottom, help.sqrtPriceTop) = getPositionSqrtPrices(usingPosition);
-                if(positions[i].supplyCoefficient != 0){
-                    _ticketSupplyData[help.ticketID][i] = positions[i].supplyCoefficient*help.positionValue/help.reserve0;
-                }
-                else{
-                    _ticketSupplyData[help.ticketID][i] = help.positionValue;
-                }
-                positions[i].supplyCoefficient += _ticketSupplyData[help.ticketID][i];
-				//!!
-                _addAddPositionReserves(i, help.positionValue, 0);                 
+            for(int24 i = usingPosition - 1; i >= lowestPositionIndex; i--){
+                _printOnTicket0(i, ticketID, positionValue);               
             }
 			
-			for(int24 i = usingPosition + 1; i >= help.highestPositionIndex; i++){
-				// in this cases positions.help.reserve0 should be 0
-                 if(positions[i].activated == false) activate(i);
-                (help.reserve0, help.reserve1) = getPositionReserves(usingPosition); 
-                (help.sqrtPriceBottom, help.sqrtPriceTop) = getPositionSqrtPrices(usingPosition);
-				amount1ToAdd = help.positionValue /sqrtPositionMultiplier**2/10**36;
-                amount1 += amount1ToAdd;
-                if(positions[i].supplyCoefficient != 0){
-                    _ticketSupplyData[help.ticketID][i] = positions[i].supplyCoefficient*amount1ToAdd/help.reserve1;
-                }
-                else{
-                    _ticketSupplyData[help.ticketID][i] = help.positionValue;
-                }
-                positions[i].supplyCoefficient += _ticketSupplyData[help.ticketID][i];
-				//!!
-                _addAddPositionReserves(i, 0, amount1ToAdd); 
+			for(int24 i = usingPosition + 1; i >= highestPositionIndex; i++){
+				amount1 +=  _printOnTicket1(i, ticketID, positionValue); 
             }
 
 
             if(positions[usingPosition].activated == false) activate(usingPosition);
-            (help.reserve0, help.reserve1) = getPositionReserves(usingPosition); 
-            (help.sqrtPriceBottom, help.sqrtPriceTop) = getPositionSqrtPrices(usingPosition);
-            amount0ToAdd = help.balance0 - lastBalance0 - amount0;
-            amount1ToAdd = help.balance1 - lastBalance1 - amount1;
-			uint256 price0 = _currentPrice(help.reserve0, help.reserve1, help.sqrtPriceBottom, help.sqrtPriceTop);
-			uint256 price1 = _currentPrice(help.reserve0 +amount0ToAdd, help.reserve1 + amount1ToAdd, help.sqrtPriceBottom, help.sqrtPriceTop);
-			require(amount0ToAdd + amount1ToAdd*price0/10**18 >= help.positionValue);
-			require(amount0ToAdd + amount1ToAdd*price1/10**18 >= help.positionValue);
+            (h.value00, h.value01) = getPositionReserves(usingPosition); 
+            (h.value10, h.value11) = getPositionSqrtPrices(usingPosition);
+            uint256 amount0ToAdd = h.balance0 - lastBalance0 - amount0;
+            uint256 amount1ToAdd = h.balance1 - lastBalance1 - amount1;
+			uint256 price0 = _currentPrice(h.value00, h.value01, h.value10, h.value11);
+			uint256 price1 = _currentPrice(h.value00 +amount0ToAdd, h.value01 + amount1ToAdd, h.value10, h.value11);
+			
+			require(amount0ToAdd + amount1ToAdd*price0/10**18 >= positionValue); // twn warunek trzeba sprawdzic czy jest wystarczajacy lub czy nie jest za silny!!!!
+			require(amount0ToAdd + amount1ToAdd*price1/10**18 >= positionValue);
 			amount0 += amount0ToAdd;
 			amount1 += amount1ToAdd;
 
             if(positions[usingPosition].supplyCoefficient != 0){
-				_ticketSupplyData[help.ticketID][usingPosition] = positions[usingPosition].supplyCoefficient * (amount0ToAdd + amount1ToAdd*price1/10**18)/(help.reserve0 + help.reserve1*price1/10**18);             
+				_ticketSupplyData[ticketID][usingPosition] = positions[usingPosition].supplyCoefficient * (amount0ToAdd + amount1ToAdd*price1/10**18)/(h.value00 + h.value01*price1/10**18);             
             } else 
             {
-                _ticketSupplyData[help.ticketID][usingPosition] = help.positionValue;                
+                _ticketSupplyData[ticketID][usingPosition] = positionValue;                
             }
             //!!
-			positions[usingPosition].supplyCoefficient += _ticketSupplyData[help.ticketID][usingPosition];
+			positions[usingPosition].supplyCoefficient += _ticketSupplyData[ticketID][usingPosition];
 			//!!
             _addAddPositionReserves(usingPosition, amount0ToAdd, amount1ToAdd); 
-            //??
-            require(help.balance0 >= _lastBalance0 + amount0 && help.balance1 >= _lastBalance1 + amount1, 'DesireSwapV0: BALANCES_ARE_TO_LOW');
-            emit Mint(help.to, help.ticketID, help.lowestPositionIndex, help.highestPositionIndex, help.positionValue, amount0, amount1);
-            _updateLastBalances(help.balance0, help.balance1);
         }
+		///???
+		require(h.balance0 >= h.lastBalance0 + amount0 && h.balance1 >= h.lastBalance1 + amount1, 'DesireSwapV0: BALANCES_ARE_TO_LOW');
+        emit Mint(to, ticketID, lowestPositionIndex, highestPositionIndex, positionValue, amount0, amount1);
+        _updateLastBalances(h.balance0, h.balance1);
     }
 
 ///
 ///	REDEEM LIQ
 ///
-
-	struct burnData{
-		uint256 amount0ToTransfer;
-		uint256 amount1ToTransfer;
-		uint256 supply;
-		uint256 amount0ToTransferHelp;
-		uint256 amount1ToTransferHelp;
+	// zeroOrOne 0=false if only token0 in reserves, 1=true if only token 1 in reserves.
+	function _readTicket(int24 index, uint256 ticketID, bool zeroOrOne)
+	private returns(uint256 amountToTransfer){
+		uint256 supply = _ticketSupplyData[ticketID][index];
+		if(zeroOrOne){
+			amountToTransfer = supply*positions[index].reserve0/positions[index].supplyCoefficient;
+			//!!
+			_subSubPositionReserves(index, amountToTransfer, 0);
+		} else {
+			amountToTransfer = supply*positions[index].reserve1/positions[index].supplyCoefficient;
+			//!!
+			_subSubPositionReserves(index, 0, amountToTransfer);			
+		}
+		//!!
+		positions[index].supplyCoefficient -= supply;
 	}
+
 	function burn (address to, uint256 ticketID) external{
 		require( _exists(ticketID), 'DesireSwapV0: THE_ERC721_DO_NOT_EXISTS');
 		address owner = Ticket.ownerOf(ticketID);
 		require( tx.origin == owner,'DesireSwapV0: THE_TX.ORIGIN_IS_NOT_THE_OWNER');
 		_burn(ticketID);
 
-		(uint256 _lastBalance0, uint256 _lastBalance1) = getLastBalances();
+		helpData memory h;
+		(h.lastBalance0, h.lastBalance1) = getLastBalances();
 		int24 usingPosition = inUsePosition;
 			
-		TicketData memory data = _ticketData[ticketID];
-		int24 highestPositionIndex = data.highestPositionIndex;
-		int24 lowestPositionIndex = data.lowestPositionIndex;
-		burnData memory help;
-		uint256 balance0;
-		uint256 balance1;
-
+		int24 highestPositionIndex = _ticketData[ticketID].highestPositionIndex;
+		int24 lowestPositionIndex = _ticketData[ticketID].lowestPositionIndex;
 		if(highestPositionIndex < usingPosition){
 			for(int24 i = highestPositionIndex; i >= highestPositionIndex; i--){
-				help.supply = _ticketSupplyData[ticketID][i];
-				help.amount0ToTransferHelp = help.supply*positions[i].reserve0/positions[i].supplyCoefficient;
-				help.amount0ToTransfer += help.amount0ToTransferHelp;
-				//!!
-				_subSubPositionReserves(i, help.amount0ToTransferHelp, 0);
-				//!!
-				positions[i].supplyCoefficient -= help.supply;
+				h.value00 += _readTicket(i, ticketID, false);
 			}
-				//!!!
-				_safeTransfer(token0, to, help.amount0ToTransfer);
-				balance0 = IERC20(token0).balanceOf(address(this));
-				balance1 = IERC20(token1).balanceOf(address(this));
-				//???
-				require(balance0 >= _lastBalance0 - help.amount0ToTransfer && balance1 >= _lastBalance1, 'DesireSwapV0: BALANCES_ARE_TO_LOW');
-				emit Burn(owner, ticketID, lowestPositionIndex, highestPositionIndex, data.positionValue, help.amount0ToTransfer, help.amount1ToTransfer);
-				//!!!
-				_updateLastBalances(balance0, balance1);
 		} else if(lowestPositionIndex > usingPosition){
 			for(int24 i = lowestPositionIndex; i <= highestPositionIndex; i++){
-				help.supply = _ticketSupplyData[ticketID][i];
-				help.amount1ToTransferHelp = help.supply*positions[i].reserve1/positions[i].supplyCoefficient;
-				help.amount1ToTransfer += help.amount1ToTransferHelp;
-				//!!
-				_subSubPositionReserves(i, 0, help.amount1ToTransfer);
-				//!!
-				positions[i].supplyCoefficient -= help.supply;
+				h.value01 += _readTicket(i, ticketID, true);
 			}
-			//!!!
-			_safeTransfer(token1, to, help.amount1ToTransfer);
-			balance0 = IERC20(token0).balanceOf(address(this));
-			balance1 = IERC20(token1).balanceOf(address(this));
-			//???
-			require(balance0 >= _lastBalance0 && balance1 >= _lastBalance1 - help.amount1ToTransfer, 'DesireSwapV0: BALANCES_ARE_TO_LOW');
-			emit Burn(owner, ticketID, lowestPositionIndex, highestPositionIndex, data.positionValue, help.amount0ToTransfer, help.amount1ToTransfer);
-			//!!!
-			_updateLastBalances(balance0, balance1);
 		} else
 		{
 			for(int24 i = highestPositionIndex; i > usingPosition; i--){
-				help.supply = _ticketSupplyData[ticketID][i];
-				help.amount0ToTransferHelp = help.supply*positions[i].reserve0/positions[i].supplyCoefficient;
-				help.amount0ToTransfer += help.amount0ToTransferHelp;
-				//!!
-				_subSubPositionReserves(i, help.amount0ToTransferHelp, 0);
-				//!!
-				positions[i].supplyCoefficient -= help.supply;
+				h.value00 += _readTicket(i, ticketID, false);
 			}
 			for(int24 i = lowestPositionIndex; i < usingPosition; i++){
-				help.supply = _ticketSupplyData[ticketID][i];
-				help.amount1ToTransferHelp = help.supply*positions[i].reserve1/positions[i].supplyCoefficient;
-				help.amount1ToTransfer += help.amount1ToTransferHelp;
-				//!!
-				_subSubPositionReserves(i, 0, help.amount1ToTransfer);
-				//!!
-				positions[i].supplyCoefficient -= help.supply;
+				h.value01 += _readTicket(i, ticketID, true);
 			}
 				
-			help.supply = _ticketSupplyData[ticketID][usingPosition];
-			help.amount0ToTransferHelp = help.supply*positions[usingPosition].reserve0/positions[usingPosition].supplyCoefficient;
-			help.amount1ToTransferHelp = help.supply*positions[usingPosition].reserve1/positions[usingPosition].supplyCoefficient;
-			help.amount0ToTransfer += help.amount0ToTransferHelp;
-			help.amount1ToTransfer += help.amount1ToTransferHelp;
-			_subSubPositionReserves(usingPosition, help.amount0ToTransferHelp, help.amount1ToTransferHelp);
-			positions[usingPosition].supplyCoefficient -= help.supply;
-
-			//!!!
-			_safeTransfer(token0, to, help.amount0ToTransfer);
-			_safeTransfer(token1, to, help.amount1ToTransfer);
-
-			balance0 = IERC20(token0).balanceOf(address(this));
-			balance1 = IERC20(token1).balanceOf(address(this));
-			//???
-			require(balance0 >= _lastBalance0 - help.amount0ToTransfer && balance1 >= _lastBalance1 - help.amount1ToTransfer, 'DesireSwapV0: BALANCES_ARE_TO_LOW');
-			
-			emit Burn(owner, ticketID, lowestPositionIndex, highestPositionIndex, data.positionValue, help.amount0ToTransfer, help.amount1ToTransfer);
-			//!!!
-			_updateLastBalances(balance0, balance1);
+			uint256 supply = _ticketSupplyData[ticketID][usingPosition];
+			h.value10 = supply*positions[usingPosition].reserve0/positions[usingPosition].supplyCoefficient;
+			h.value11 = supply*positions[usingPosition].reserve1/positions[usingPosition].supplyCoefficient;
+			h.value00 += h.value10;
+			h.value01 += h.value11;
+			_subSubPositionReserves(usingPosition, h.value10, h.value11);
+			positions[usingPosition].supplyCoefficient -= supply;
 		}
+		//!!!
+		_safeTransfer(token0, to, h.value00);
+		_safeTransfer(token1, to, h.value01);
+		h.balance0 = IERC20(token0).balanceOf(address(this));
+		h.balance1 = IERC20(token1).balanceOf(address(this));
+		//???
+		require(h.balance0 >= h.lastBalance0 - h.value00 && h.balance1 >= h.lastBalance1 - h.value01, 'DesireSwapV0: BALANCES_ARE_TO_LOW');
+		emit Burn(owner, ticketID, lowestPositionIndex, highestPositionIndex, _ticketData[ticketID].positionValue, h.value00, h.value01);
+		//!!!
+		_updateLastBalances(h.balance0, h.balance1);
 	}
 }
