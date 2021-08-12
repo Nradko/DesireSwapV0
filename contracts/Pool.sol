@@ -5,7 +5,7 @@ import "./library/PoolHelper.sol";
 import "./library/IERC20.sol";
 import "./library/Ticket.sol";
 
-contract Pool is PoolHelper, Ticket
+contract Pool is Ticket, PoolHelper
 {
 	bool public protocolFeeIsOn;
 
@@ -20,7 +20,6 @@ contract Pool is PoolHelper, Ticket
 	uint256 private totalReserve1;
 	uint256 private lastBalance0;
 	uint256 private lastBalance1;
-	uint256 private blockTimestampLast;
 
 	int24 private inUsePosition;
 	int24 private highestActivatedPosition;
@@ -50,9 +49,6 @@ contract Pool is PoolHelper, Ticket
 		positions[0].sqrtPriceBottom = _startingSqrtPriceBottom;
 		positions[0].sqrtPriceTop = _startingSqrtPriceBottom*_sqrtPositionMultiplier/10**18;
 		positions[0].activated = true;
-		highestActivatedPosition = 0;
-		lowestActivatedPosition = 0;
-		inUsePosition = 0;
 	}
 
 	event SwapInPosition(address msgSender, int24 index, bool zeroForOne, uint256 amountIn, uint256 amountOut, address to);
@@ -61,38 +57,17 @@ contract Pool is PoolHelper, Ticket
 	event Swap( address msgSender, bool zeroForOne, int256 amount, address to);
 	event Mint(address to, uint256 ticketID, int24 lowestPositionIndex, int24 highestPositionIndex, uint256 positionValue, uint256 amount0, uint256 amount1);
 	event Burn(address owner, uint256 ticketID, int24 lowestPositionIndex, int24 highestPositionIndex, uint256 positionValue, uint256 amount0Transfered, uint256 amount1Transfered);
+
 ///
 /// VIEW FUNCTIONS
 ///
 
-	function getLastBalances() public view
-	returns (uint256 _lastBalance0, uint256 _lastBalance1) {
-		_lastBalance0 = lastBalance0;
-		_lastBalance1 = lastBalance1;
-	}
-
-	function getTotalReserves() public view
-	returns (uint _totalReserve0, uint256 _totalReserve1){
-		_totalReserve0 = totalReserve0;
-		_totalReserve1 = totalReserve1;
-	}
-
-	function getPositionReserves(int24 index) public view
-	returns (uint256 _reserve0, uint256 _reserve1) {
+	function getPositionInfo(int24 index) public view
+	returns (uint256 _reserve0, uint256 _reserve1, uint256 _sqrtPriceBottom, uint256 _sqrtPriceTop) {
 		_reserve0 = positions[index].reserve0;
 		_reserve1 = positions[index].reserve1;
-	}
-
-	function getPositionSqrtPrices(int24 index) public view
-	returns (uint256 _sqrtPriceBottom, uint256 _sqrtPriceTop){
 		_sqrtPriceBottom = positions[index].sqrtPriceBottom;
 		_sqrtPriceTop = positions[index].sqrtPriceTop;
-	}
-
-	function getProtocolFeePercentage() public view
-	returns(uint256 _protocolFeePercentage)
-	{
-		_protocolFeePercentage = protocolFeePercentage;
 	}
 
 ///
@@ -101,61 +76,27 @@ contract Pool is PoolHelper, Ticket
 	function _updateLastBalances(uint256 _lastBalance0, uint256 _lastBalance1) private {
 		lastBalance0 = _lastBalance0;
 		lastBalance1 = _lastBalance1;
-		blockTimestampLast = block.timestamp;
 	}
 
-	function _addAddPositionReserves(
+	function _modifyPositionReserves(
 		int24 index,
-		uint256 toAdd0, uint256 toAdd1)
+		uint256 toAdd0, uint256 toAdd1,
+		bool add0, bool add1)
 		private
 	{
-		positions[index].reserve0 += toAdd0;
-		positions[index].reserve1 += toAdd1;
-		totalReserve0 += toAdd0;
-		totalReserve1 += toAdd1;
-	}
-
-	function _subAddPositionReserves (
-		int24 index,
-		uint256 toSub0, uint256 toAdd1)
-		private
-	{
-		positions[index].reserve0 -= toSub0;
-		positions[index].reserve1 += toAdd1;
-		totalReserve0 -= toSub0;
-		totalReserve1 += toAdd1;
+		positions[index].reserve0 = add0 ? positions[index].reserve0 + toAdd0 : positions[index].reserve0 - toAdd0;
+		positions[index].reserve1 = add1 ? positions[index].reserve1 +toAdd1 : positions[index].reserve1 - toAdd1;
+		totalReserve0 = add0 ? totalReserve0 + toAdd0: totalReserve0 -toAdd0;
+		totalReserve1 = add1 ? totalReserve1 + toAdd0: totalReserve1 -toAdd1;
         if (positions[index].reserve0 == 0 && positions[index-1].activated == true){
             inUsePosition--;
             emit InUsePositionChanged(index-1);
         }
-	}
-
-	function _addSubPositionReserves (
-		int24 index,
-		uint256 toAdd0, uint256 toSub1)
-		private
-	{
-		positions[index].reserve0 += toAdd0;
-		positions[index].reserve1 -= toSub1;
-		totalReserve0 += toAdd0;
-		totalReserve1 -= toSub1;
-        if(positions[index].reserve1 == 0 && positions[index+1].activated == true){
+		if(positions[index].reserve1 == 0 && positions[index+1].activated == true){
             inUsePosition++;
             emit InUsePositionChanged(index+1);
         }
 	}
-
-	function _subSubPositionReserves (
-		int24 index,
-		uint256 toSub0, uint256 toSub1)
-		private
-	{
-		positions[index].reserve0 -= toSub0;
-		positions[index].reserve1 -= toSub1;
-		totalReserve0 -= toSub0;
-		totalReserve1 -= toSub1;
-	}
-
 ///
 /// Position activation
 ///
@@ -189,11 +130,21 @@ contract Pool is PoolHelper, Ticket
 	// !! IT TRANSFERS TOKENS OUT OF POOL !!
 	// !! IT MODIFIES IMPORTANT DATA !!
 
+	struct helpData{
+        uint256 lastBalance0;
+		uint256 lastBalance1;
+		uint256 balance0;
+		uint256 balance1;
+        uint256 value00;
+        uint256 value01;
+        uint256 value10;
+        uint256 value11;
+    }
 	function _swapInPosition(
         int24 index,
         address to,
         bool zeroForOne,
-        uint256 amountOut) internal returns( uint256 amountIn)
+        uint256 amountOut) private returns( uint256 amountIn)
     {
         require(index == inUsePosition, 'DesireSwapV0: WRONG_INDEX');
 		helpData memory h = helpData({
@@ -220,10 +171,10 @@ contract Pool is PoolHelper, Ticket
             require(LiqCoefficient(h.value00 + amountInHelp, h.value01 - amountOut, h.value10, h.value11) >= L,
              'DesireSwapV0: LIQ_COEFFICIENT_IS_TO_LOW'); //assure that after swap there is more or equal liquidity. If _amountIn works correctly it can be removed.
             //!!
-            _addSubPositionReserves(
+            _modifyPositionReserves(
                 index,
                 amountIn - collectedProtocolFee,
-                amountOut);
+                amountOut, true, false);
         }
         // token1 for token0 // token1 in; token0 out;
         if( zeroForOne == false) {    
@@ -231,10 +182,10 @@ contract Pool is PoolHelper, Ticket
             require(LiqCoefficient(h.value00 - amountOut, h.value01 + amountInHelp, h.value00, h.value11) >= L,
             'DesireSwapV0: LIQ_COEFFICIENT_IS_TO_LOW'); //assure that after swao there is more or equal liquidity. If _amountIn works correctly it can be removed.            
             //!!
-            _subAddPositionReserves(
+            _modifyPositionReserves(
                 index,
                 amountOut,
-                amountIn - collectedProtocolFee);
+                amountIn - collectedProtocolFee, false, true);
         }
         emit SwapInPosition(msg.sender, index, zeroForOne, amountIn, amountOut, to);
 		delete h;
@@ -310,8 +261,7 @@ contract Pool is PoolHelper, Ticket
         else{
             remained = uint256(amount);
             uint256 predictedFee = remained *feePercentage/10**18;
-            (h.value00, h.value01) = getPositionReserves(usingPosition); 
-            (h.value10, h.value11) = getPositionSqrtPrices(usingPosition);
+            (h.value00, h.value01, h.value10, h.value11) = getPositionInfo(usingPosition); 
             uint256 L = LiqCoefficient( h.value00, h.value01, h.value10, h.value11);
             uint256 amountSend =0;
             uint256 amountOut = _amountOut(zeroForOne, h.value00, h.value01, h.value10, h.value11, remained-predictedFee, L);
@@ -320,8 +270,7 @@ contract Pool is PoolHelper, Ticket
                 usingPosition = inUsePosition;
                 amountSend += zeroForOne ? h.value01 : h.value00;
                 predictedFee = remained *feePercentage/10**18;
-                (h.value00, h.value01) = getPositionReserves(usingPosition);
-                (h.value10, h.value11) = getPositionSqrtPrices(usingPosition);
+                (h.value00, h.value01, h.value10, h.value11) = getPositionInfo(usingPosition); 
                 L = LiqCoefficient( h.value00, h.value01, h.value10, h.value11);
                 amountOut = _amountOut(zeroForOne, h.value00, h.value01, h.value10, h.value11, remained-predictedFee, L);
             }
@@ -368,7 +317,7 @@ contract Pool is PoolHelper, Ticket
 		}
 		positions[index].supplyCoefficient += _ticketSupplyData[ticketID][index];
 		//!!
-		_addAddPositionReserves(index, positionValue, 0); 
+		_modifyPositionReserves(index, positionValue, 0, true, true); 
 	}
 	function _printOnTicket1(int24 index, uint256 ticketID, uint256 positionValue)
 	private returns(uint256 amount1ToAdd){ 
@@ -382,7 +331,7 @@ contract Pool is PoolHelper, Ticket
 		}
 		positions[index].supplyCoefficient += _ticketSupplyData[ticketID][index];
 		//!!
-		_addAddPositionReserves(index, 0, amount1ToAdd); 
+		_modifyPositionReserves(index, 0, amount1ToAdd, true, true); 
 	}
 		
 	function mint(
@@ -399,7 +348,6 @@ contract Pool is PoolHelper, Ticket
 			balance0: 0, balance1: 0,
 			value00: 0, value01: 0,
 			value10: 0, value11: 0});
-        (h.lastBalance0, h.lastBalance1) = getTotalReserves();
         h.balance0 = IERC20(token0).balanceOf(address(this));
         h.balance1 = IERC20(token1).balanceOf(address(this));
 		uint256 ticketID = _mint(to);
@@ -436,8 +384,7 @@ contract Pool is PoolHelper, Ticket
 
 
             if(positions[usingPosition].activated == false) activate(usingPosition);
-            (h.value00, h.value01) = getPositionReserves(usingPosition); 
-            (h.value10, h.value11) = getPositionSqrtPrices(usingPosition);
+            (h.value00, h.value01, h.value10, h.value11) = getPositionInfo(usingPosition); 
             uint256 amount0ToAdd = h.balance0 - lastBalance0 - amount0;
             uint256 amount1ToAdd = h.balance1 - lastBalance1 - amount1;
 			uint256 price0 = _currentPrice(h.value00, h.value01, h.value10, h.value11);
@@ -457,11 +404,11 @@ contract Pool is PoolHelper, Ticket
             //!!
 			positions[usingPosition].supplyCoefficient += _ticketSupplyData[ticketID][usingPosition];
 			//!!
-            _addAddPositionReserves(usingPosition, amount0ToAdd, amount1ToAdd); 
+            _modifyPositionReserves(usingPosition, amount0ToAdd, amount1ToAdd, true ,true); 
         }
 		///???
 		require(h.balance0 >= h.lastBalance0 + amount0 && h.balance1 >= h.lastBalance1 + amount1, 'DesireSwapV0: BALANCES_ARE_TO_LOW');
-        emit Mint(to, ticketID, lowestPositionIndex, highestPositionIndex, positionValue, amount0, amount1);
+	    emit Mint(to, ticketID, lowestPositionIndex, highestPositionIndex, positionValue, amount0, amount1);
         _updateLastBalances(h.balance0, h.balance1);
     }
 
@@ -475,11 +422,11 @@ contract Pool is PoolHelper, Ticket
 		if(zeroOrOne){
 			amountToTransfer = supply*positions[index].reserve0/positions[index].supplyCoefficient;
 			//!!
-			_subSubPositionReserves(index, amountToTransfer, 0);
+			_modifyPositionReserves(index, amountToTransfer, 0, false, false);
 		} else {
 			amountToTransfer = supply*positions[index].reserve1/positions[index].supplyCoefficient;
 			//!!
-			_subSubPositionReserves(index, 0, amountToTransfer);			
+			_modifyPositionReserves(index, 0, amountToTransfer, false, false);			
 		}
 		//!!
 		positions[index].supplyCoefficient -= supply;
@@ -492,7 +439,8 @@ contract Pool is PoolHelper, Ticket
 		_burn(ticketID);
 
 		helpData memory h;
-		(h.lastBalance0, h.lastBalance1) = getLastBalances();
+		h.lastBalance0 = lastBalance0;
+		h.lastBalance1 = lastBalance1;
 		int24 usingPosition = inUsePosition;
 			
 		int24 highestPositionIndex = _ticketData[ticketID].highestPositionIndex;
@@ -519,7 +467,7 @@ contract Pool is PoolHelper, Ticket
 			h.value11 = supply*positions[usingPosition].reserve1/positions[usingPosition].supplyCoefficient;
 			h.value00 += h.value10;
 			h.value01 += h.value11;
-			_subSubPositionReserves(usingPosition, h.value10, h.value11);
+			_modifyPositionReserves(usingPosition, h.value10, h.value11, false, false);
 			positions[usingPosition].supplyCoefficient -= supply;
 		}
 		//!!!
