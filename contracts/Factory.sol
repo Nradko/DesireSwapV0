@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import"./Pool.sol";
-import"./library/interfaces/IDesireSwapV0Factory.sol";
+import"./interfaces/IDesireSwapV0Factory.sol";
 
 contract DesireSwapV0Factory is IDesireSwapV0Factory {
     address public override owner;
@@ -14,10 +14,12 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
     uint8 public poolTypeCount;
     mapping(address => mapping(address => mapping(uint8 => address))) public poolAddress;
 
-    constructor(){
+    constructor(address _body){
         owner = msg.sender;
         feeCollector = msg.sender;
         emit OwnerChanged(address(0), msg.sender);
+        body = _body;
+        emit BodyChanged(address(0), body);
     }
 
 
@@ -53,5 +55,11 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
         require(msg.sender == owner);
         emit CollectorChanged(feeCollector, _feeCollector);
         feeCollector = _feeCollector;
+    }
+
+    function setBody(address _body) external override{
+        require(msg.sender == owner);
+        emit BodyChanged(body, _body);
+        body = _body;
     }
 }

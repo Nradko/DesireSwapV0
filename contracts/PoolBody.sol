@@ -2,9 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "./library/PoolHelper.sol";
-import "./library/interfaces/IERC20.sol";
 import "./library/Ticket.sol";
-import './library/interfaces/IDesireSwapV0Factory.sol';
+import "./interfaces/IERC20.sol";
+import "./interfaces/IDesireSwapV0Factory.sol";
+import "./interfaces/IDesireSwapV0FlashCallback.sol";
 
 contract DesireSwapV0PoolBody is Ticket, PoolHelper
 {
@@ -36,7 +37,7 @@ contract DesireSwapV0PoolBody is Ticket, PoolHelper
 	}
 	mapping( int24 => Position) private positions;
 
-		constructor (
+	constructor (
 		address _factory, address _token0, address _token1,
 		uint256 _sqrtPositionMultiplier, uint256 _feePercentage,
 		uint256 _startingSqrtPriceBottom
@@ -59,6 +60,7 @@ contract DesireSwapV0PoolBody is Ticket, PoolHelper
 	event Mint(address to, uint256 ticketID, int24 lowestPositionIndex, int24 highestPositionIndex, uint256 positionValue, uint256 amount0, uint256 amount1);
 	event Burn(address owner, uint256 ticketID, int24 lowestPositionIndex, int24 highestPositionIndex, uint256 positionValue, uint256 amount0Transfered, uint256 amount1Transfered);
 	event CollectFee(address token, uint256 amount);
+	event Flash(address msgSender, address recipient, uint256 amount0, uint256 amount1, uint256 paid0, uint256 paid1);
 
 
 
@@ -71,6 +73,13 @@ contract DesireSwapV0PoolBody is Ticket, PoolHelper
 ///
 /// VIEW FUNCTIONS
 ///
+	function balance0() public view returns(uint256 _balance0){
+		_balance0 = IERC20(token0).balanceOf(address(this));
+	}
+
+	function balance1() public view returns(uint256 _balance1){
+		_balance1 = IERC20(token1).balanceOf(address(this));
+	}
 
 	function getPositionInfo(int24 index) public view
 	returns (uint256 _reserve0, uint256 _reserve1, uint256 _sqrtPriceBottom, uint256 _sqrtPriceTop) {
@@ -207,16 +216,29 @@ contract DesireSwapV0PoolBody is Ticket, PoolHelper
     // amount > 0 amount is exact token inflow, amount < 0 amount is exact token outflow.
     // sqrtPriceLimit is price
 
+	struct swapData{
+		address to;
+        bool zeroForOne;
+        int256 amount;
+        uint256 sqrtPriceLimit;
+        bytes data;
+	}
+
 	function swap(
         address to,
         bool zeroForOne,
-        int256 amount //,
-        //uint256 sqrtPriceLimit,
-        //bytes calldata data
+        int256 amount,
+        uint256 sqrtPriceLimit,
+        bytes calldata data
     ) external returns (int256, int256)
     {        
-        helpData memory h = helpData({
-			lastBalance0: lastBalance0, lastBalance1:lastBalance1,
+        swapData memory s= swapData({
+			to: to, zeroForOne: zeroForOne,
+			amount: amount, sqrtPriceLimit: sqrtPriceLimit,
+			data: data
+		});
+		helpData memory h = helpData({
+			lastBalance0: lastBalance0, lastBalance1: lastBalance1,
 			balance0: 0, balance1: 0,
 			value00: 0, value01: 0,
 			value10: 0, value11: 0});
@@ -229,36 +251,36 @@ contract DesireSwapV0PoolBody is Ticket, PoolHelper
         // tokensForExactTokens
         //
         // token0 In, token1 Out, tokensForExactTokens
-        if(amount <= 0){
-            remained = uint256(-amount);
-            if( zeroForOne){
+        if(s.amount <= 0){
+            remained = uint256(-s.amount);
+            if( s.zeroForOne){
                 require(remained <= totalReserve1);
                 ///!!! token transfer
-                _safeTransfer(token1, to, remained);
+                _safeTransfer(token1, s.to, remained);
                 usingReserve = positions[usingPosition].reserve1;        
             }
             // token1 In, token0 Out, tokensForExactTokens
             else{
                 require(remained <= totalReserve0);
                 ///!!! token transfer
-                _safeTransfer(token0, to, remained);
+                _safeTransfer(token0, s.to, remained);
                 usingReserve = positions[usingPosition].reserve0;        
                 //???
             }
                 while( remained > usingReserve) {
-                    amountRecieved += _swapInPosition( usingPosition, to, zeroForOne, usingReserve);
+                    amountRecieved += _swapInPosition( usingPosition, s.to, s.zeroForOne, usingReserve);
                     remained -= usingReserve;
                     usingPosition = inUsePosition;
-                    usingReserve = zeroForOne ? positions[usingPosition].reserve1 : positions[usingPosition].reserve0;
+                    usingReserve = s.zeroForOne ? positions[usingPosition].reserve1 : positions[usingPosition].reserve0;
                 }
-                amountRecieved +=_swapInPosition( usingPosition, to, zeroForOne, remained);
-                h.balance0 = IERC20(token0).balanceOf(address(this));
-                h.balance1 = IERC20(token1).balanceOf(address(this));
-            if( zeroForOne){
-                require( h.balance0 >= h.lastBalance0 + amountRecieved && h.balance1 >= h.lastBalance1 - uint256(-amount),
+                amountRecieved +=_swapInPosition( usingPosition, s.to, s.zeroForOne, remained);
+                h.balance0 = balance0();
+                h.balance1 = balance1();
+            if( s.zeroForOne){
+                require( h.balance0 >= h.lastBalance0 + amountRecieved && h.balance1 >= h.lastBalance1 - uint256(-s.amount),
                         'DesireSwapV0: SWAP_HAS_FAILED._BALANCES_ARE_TO_SMALL');
             } else {
-                require( h.balance1 >= h.lastBalance1 + amountRecieved && h.balance0 >= h.lastBalance0 - uint256(-amount),
+                require( h.balance1 >= h.lastBalance1 + amountRecieved && h.balance0 >= h.lastBalance0 - uint256(-s.amount),
                         'DesireSwapV0: SWAP_HAS_FAILED._BALANCES_ARE_TO_SMALL');
             }
 
@@ -269,43 +291,44 @@ contract DesireSwapV0PoolBody is Ticket, PoolHelper
         //
         // token0 In, token1 Out, exactTokensForTokens
         else{
-            remained = uint256(amount);
+            remained = uint256(s.amount);
             uint256 predictedFee = remained *feePercentage/10**18;
             (h.value00, h.value01, h.value10, h.value11) = getPositionInfo(usingPosition); 
             uint256 L = LiqCoefficient( h.value00, h.value01, h.value10, h.value11);
             uint256 amountSend =0;
-            uint256 amountOut = _amountOut(zeroForOne, h.value00, h.value01, h.value10, h.value11, remained-predictedFee, L);
-            while( amountOut >= (zeroForOne? h.value01 : h.value00)) {
-                remained -= _swapInPosition(usingPosition, to, zeroForOne, h.value00);
+            uint256 amountOut = _amountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained-predictedFee, L);
+            while( amountOut >= (s.zeroForOne? h.value01 : h.value00)) {
+                remained -= _swapInPosition(usingPosition, s.to, s.zeroForOne, h.value00);
                 usingPosition = inUsePosition;
-                amountSend += zeroForOne ? h.value01 : h.value00;
+                amountSend += s.zeroForOne ? h.value01 : h.value00;
                 predictedFee = remained *feePercentage/10**18;
                 (h.value00, h.value01, h.value10, h.value11) = getPositionInfo(usingPosition); 
                 L = LiqCoefficient( h.value00, h.value01, h.value10, h.value11);
-                amountOut = _amountOut(zeroForOne, h.value00, h.value01, h.value10, h.value11, remained-predictedFee, L);
+                amountOut = _amountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained-predictedFee, L);
             }
-            remained -= _swapInPosition(usingPosition, to, zeroForOne, amountOut);
+            remained -= _swapInPosition(usingPosition, s.to, s.zeroForOne, amountOut);
             amountSend +=amountOut;
 
             //!!!
-                _safeTransfer(zeroForOne ? token1: token0, to, amountSend);
-                h.balance0 = IERC20(token0).balanceOf(address(this));
-                h.balance1 = IERC20(token1).balanceOf(address(this));
-            if( zeroForOne){
+            _safeTransfer(s.zeroForOne ? token1: token0, s.to, amountSend);
+            
+			h.balance0 = balance0();
+            h.balance1 = balance1();
+            if( s.zeroForOne){
                 //???
-                require( h.balance0 >= h.lastBalance0 + uint256(amount) && h.balance1 >= h.lastBalance1 - amountSend,
+                require( h.balance0 >= h.lastBalance0 + uint256(s.amount) && h.balance1 >= h.lastBalance1 - amountSend,
                         'DesireSwapV0: SWAP_HAS_FAILED._BALANCES_ARE_TO_SMALL');            
             }
             else{
                 //???
-                require( h.balance0 >= h.lastBalance0 - amountSend  && h.balance1 >= h.lastBalance1 + uint256(amount),
+                require( h.balance0 >= h.lastBalance0 - amountSend  && h.balance1 >= h.lastBalance1 + uint256(s.amount),
                         'DesireSwapV0: SWAP_HAS_FAILED._BALANCES_ARE_TO_SMALL');
             }
         }
         int256 amount0 = int256(h.balance0) - int256(h.lastBalance0);
 		int256 amount1 = int256(h.balance1) - int256(h.lastBalance1);
 		_updateLastBalances(h.balance0, h.balance1);
-        emit Swap( msg.sender, zeroForOne, amount, to);
+        emit Swap( msg.sender, s.zeroForOne, s.amount, s.to);
 		delete h;
 		return (amount0, amount1);
     }
@@ -358,8 +381,8 @@ contract DesireSwapV0PoolBody is Ticket, PoolHelper
 			balance0: 0, balance1: 0,
 			value00: 0, value01: 0,
 			value10: 0, value11: 0});
-        h.balance0 = IERC20(token0).balanceOf(address(this));
-        h.balance1 = IERC20(token1).balanceOf(address(this));
+        h.balance0 = balance0();
+        h.balance1 = balance1();
 		uint256 ticketID = _mint(to);
         int24 usingPosition = inUsePosition;   
 		_ticketData[ticketID].lowestPositionIndex = lowestPositionIndex;
@@ -483,8 +506,8 @@ contract DesireSwapV0PoolBody is Ticket, PoolHelper
 		//!!!
 		_safeTransfer(token0, to, h.value00);
 		_safeTransfer(token1, to, h.value01);
-		h.balance0 = IERC20(token0).balanceOf(address(this));
-		h.balance1 = IERC20(token1).balanceOf(address(this));
+		h.balance0 = balance0();
+		h.balance1 = balance1();
 		//???
 		require(h.balance0 >= h.lastBalance0 - h.value00 && h.balance1 >= h.lastBalance1 - h.value01, 'DesireSwapV0: BALANCES_ARE_TO_LOW');
 		emit Burn(owner, ticketID, lowestPositionIndex, highestPositionIndex, _ticketData[ticketID].positionValue, h.value00, h.value01);
@@ -492,22 +515,35 @@ contract DesireSwapV0PoolBody is Ticket, PoolHelper
 		_updateLastBalances(h.balance0, h.balance1);
 	}
 
-	///
-	/// Factory Owner Actions
-	///
+	//
+	// FLASH
+	//
+	function flash(
+        address recipient,
+        uint256 amount0,
+        uint256 amount1,
+        bytes calldata data
+    ) external{
+        uint256 fee0 = amount0*feePercentage/10**18;
+        uint256 fee1 = amount1*feePercentage/10**18;
+        uint256 balance0Before = balance0();
+        uint256 balance1Before = balance1();
 
-	function collectFee(address token, uint256 amount) external{
-		require(msg.sender == IDesireSwapV0Factory(factory).owner());
-		_safeTransfer(token, IDesireSwapV0Factory(factory).feeCollector(), amount);
-		require( IERC20(token0).balanceOf(address(this)) >= totalReserve0
-			  && IERC20(token1).balanceOf(address(this)) >= totalReserve1);
-		emit CollectFee(token, amount);
-	}
+        if (amount0 > 0) _safeTransfer(token0, recipient, amount0);
+        if (amount1 > 0) _safeTransfer(token1, recipient, amount1);
 
-	function setProtocolFee(bool turnOn, uint256 newFee) external{
-		require(msg.sender == IDesireSwapV0Factory(factory).owner());
-		protocolFeeIsOn = turnOn;
-		protocolFeePercentage = newFee;
-	}
+        IDesireSwapV3FlashCallback(msg.sender).desireSwapV3FlashCallback(fee0, fee1, data);
 
+        uint256 balance0After = balance0();
+        uint256 balance1After = balance1();
+
+        require(balance0Before + fee0 <= balance0After, 'F0');
+        require(balance1Before + fee1 <= balance1After, 'F1');
+
+		uint256 paid0 = balance0After - balance0Before;
+		uint256 paid1 = balance1After - balance1Before;
+
+
+        emit Flash(msg.sender, recipient, amount0, amount1, paid0, paid1);
+    }
 }

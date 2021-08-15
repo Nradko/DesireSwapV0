@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "./library/PoolHelper.sol";
-import "./library/interfaces/IERC20.sol";
 import "./library/Ticket.sol";
-import './library/interfaces/IDesireSwapV0Factory.sol';
+import "./interfaces/IERC20.sol";
+import './interfaces/IDesireSwapV0Factory.sol';
+import './interfaces/IDesireSwapV0Pool.sol';
 
-contract DesireSwapV0Pool is Ticket, PoolHelper
+contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool
 {
 	bool public protocolFeeIsOn;
 
@@ -36,7 +36,7 @@ contract DesireSwapV0Pool is Ticket, PoolHelper
 	}
 	mapping( int24 => Position) private positions;
 
-		constructor (
+	constructor (
 		address _factory, address _token0, address _token1,
 		uint256 _sqrtPositionMultiplier, uint256 _feePercentage,
 		uint256 _startingSqrtPriceBottom
@@ -52,25 +52,17 @@ contract DesireSwapV0Pool is Ticket, PoolHelper
 		positions[0].activated = true;
 	}
 
-	event SwapInPosition(address msgSender, int24 index, bool zeroForOne, uint256 amountIn, uint256 amountOut, address to);
-	event PositionActivated(int24 index);
-	event InUsePositionChanged(int24 index);
-	event Swap( address msgSender, bool zeroForOne, int256 amount, address to);
-	event Mint(address to, uint256 ticketID, int24 lowestPositionIndex, int24 highestPositionIndex, uint256 positionValue, uint256 amount0, uint256 amount1);
-	event Burn(address owner, uint256 ticketID, int24 lowestPositionIndex, int24 highestPositionIndex, uint256 positionValue, uint256 amount0Transfered, uint256 amount1Transfered);
-	event CollectFee(address token, uint256 amount);
-
-	function getLastBalances() external view returns (uint256 _lastBalance0, uint256 _lastBalance1){
+	function getLastBalances() external override view returns (uint256 _lastBalance0, uint256 _lastBalance1){
 		_lastBalance0 = lastBalance0;
 		_lastBalance1 = lastBalance1;
 	}
 
-	function getTotalReserves() external view returns (uint256 _totalReserve0, uint256 _totalReserve1){
+	function getTotalReserves() external override view returns (uint256 _totalReserve0, uint256 _totalReserve1){
 		_totalReserve0 = totalReserve0;
 		_totalReserve1 = totalReserve1;
 	}
 
-	function getPositionInfo(int24 index) external view
+	function getPositionInfo(int24 index) external override view
 	returns (uint256 _reserve0, uint256 _reserve1, uint256 _sqrtPriceBottom, uint256 _sqrtPriceTop) {
 		_reserve0 = positions[index].reserve0;
 		_reserve1 = positions[index].reserve1;
@@ -81,13 +73,14 @@ contract DesireSwapV0Pool is Ticket, PoolHelper
 	function swap(
         address to,
         bool zeroForOne,
-        int256 amount //,
-        //uint256 sqrtPriceLimit,
-        //bytes calldata data
-    ) external {
+        int256 amount,
+        uint256 sqrtPriceLimit,
+        bytes calldata data
+    ) external override returns(int256 amount0, int256 amount1) {
 		address body = IDesireSwapV0Factory(factory).body(); 
 		(bool success, bytes memory data) = body.delegatecall(
-            abi.encodeWithSignature("swap(address to, bool zeroForOne, int256 amount)", to, zeroForOne, amount)
+            abi.encodeWithSignature("swap(address to, bool zeroForOne, int256 amount, uint256 sqrtPriceLimit,bytes calldata data)"
+			, to, zeroForOne, amount, sqrtPriceLimit, data)
         );
 	}
 
@@ -96,17 +89,29 @@ contract DesireSwapV0Pool is Ticket, PoolHelper
         int24 lowestPositionIndex,
         int24 highestPositionIndex,
         uint256 positionValue)
-        external {
+        external override {
 			address body = IDesireSwapV0Factory(factory).body(); 
 			(bool success, bytes memory data) = body.delegatecall(
             	abi.encodeWithSignature("mint(address to, int24 lowestPositionIndex, int24 highestPositionIndex, uint256 positionValue)", to, lowestPositionIndex, highestPositionIndex, positionValue)
         );
 		}
 
-	function burn (address to, uint256 ticketID) external{
+	function burn (address to, uint256 ticketID) external override{
 		address body = IDesireSwapV0Factory(factory).body(); 
 		(bool success, bytes memory data) = body.delegatecall(
         	abi.encodeWithSignature("burn(aaddress to, uint256 ticketID)", to, ticketID)
+        );
+	}
+
+	function flash(
+		address to,
+        uint256 amount0,
+        uint256 amount1,
+        bytes calldata data
+    ) external override{
+		address body = IDesireSwapV0Factory(factory).body(); 
+		(bool success, bytes memory data) = body.delegatecall(
+        	abi.encodeWithSignature("flash(address to, uint256 amount0, uint256 amount1, bytes calldata data)",to, amount0, amount1, data)
         );
 	}
 
@@ -117,8 +122,8 @@ contract DesireSwapV0Pool is Ticket, PoolHelper
         (bool success, bytes memory data) = token.call(abi.encodeWithSelector(SELECTOR, to, value));
         require(success && (data.length == 0 || abi.decode(data, (bool))), 'DesireSwapV0: TRANSFER_FAILED');
     }
-	
-	function collectFee(address token, uint256 amount) external{
+
+	function collectFee(address token, uint256 amount) external override{
 		require(msg.sender == IDesireSwapV0Factory(factory).owner());
 		_safeTransfer(token, IDesireSwapV0Factory(factory).feeCollector(), amount);
 		require( IERC20(token0).balanceOf(address(this)) >= totalReserve0
@@ -126,7 +131,7 @@ contract DesireSwapV0Pool is Ticket, PoolHelper
 		emit CollectFee(token, amount);
 	}
 
-	function setProtocolFee(bool turnOn, uint256 newFee) external{
+	function setProtocolFee(bool turnOn, uint256 newFee) external override{
 		require(msg.sender == IDesireSwapV0Factory(factory).owner());
 		protocolFeeIsOn = turnOn;
 		protocolFeePercentage = newFee;
