@@ -2,9 +2,9 @@
 pragma solidity ^0.8.0;
 
 
-interface IDesireSwapV3FlashCallback {
+interface IDesireSwapV0FlashCallback {
 
-    function desireSwapV3FlashCallback(
+    function desireSwapV0FlashCallback(
         uint256 fee0,
         uint256 fee1,
         bytes calldata data
