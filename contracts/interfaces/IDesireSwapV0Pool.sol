@@ -42,6 +42,5 @@ interface IDesireSwapV0Pool
     ) external;
 
 // FactoryOwnerActions.
-	function collectFee(address token, uint256 amount) external;
-	function setProtocolFee(bool turnOn, uint256 newFee) external;
+	function collectFee(address token, uint256 amount) external;	
 }

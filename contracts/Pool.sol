@@ -1,22 +1,21 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "./library/Ticket.sol";
+import "./Ticket.sol";
+import "./library/TransferHelper.sol";
 import "./interfaces/IERC20.sol";
 import './interfaces/IDesireSwapV0Factory.sol';
 import './interfaces/IDesireSwapV0Pool.sol';
 
 contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool
 {
-	bool public protocolFeeIsOn;
 
 	address public immutable factory;
 	address public immutable token0;
 	address public immutable token1;
 
 	uint256 public immutable sqrtPositionMultiplier;   // example: 100100000.... is 1.001 (* 10**36)
-	uint256 public immutable feePercentage;            //  0 fee is 0 // 100% fee is 1* 10**36
-	uint256 private protocolFeePercentage;
+	uint256 public immutable feePercentage;            //  0 fee is 0 // 100% fee is 1* 10**36;
 	uint256 private totalReserve0;
 	uint256 private totalReserve1;
 	uint256 private lastBalance0;
@@ -115,25 +114,11 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool
         );
 	}
 
-
-	bytes4 internal constant SELECTOR = bytes4(keccak256(bytes('transfer(address,uint256)')));
-
-    function _safeTransfer( address token, address to, uint value) internal {
-        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(SELECTOR, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), 'DesireSwapV0: TRANSFER_FAILED');
-    }
-
 	function collectFee(address token, uint256 amount) external override{
 		require(msg.sender == IDesireSwapV0Factory(factory).owner());
-		_safeTransfer(token, IDesireSwapV0Factory(factory).feeCollector(), amount);
+		TransferHelper.safeTransfer(token, IDesireSwapV0Factory(factory).feeCollector(), amount);
 		require( IERC20(token0).balanceOf(address(this)) >= totalReserve0
 			  && IERC20(token1).balanceOf(address(this)) >= totalReserve1);
 		emit CollectFee(token, amount);
-	}
-
-	function setProtocolFee(bool turnOn, uint256 newFee) external override{
-		require(msg.sender == IDesireSwapV0Factory(factory).owner());
-		protocolFeeIsOn = turnOn;
-		protocolFeePercentage = newFee;
 	}
 }

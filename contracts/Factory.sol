@@ -9,6 +9,9 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
     address public override feeCollector;
     address public override body;
 
+    bool public override protocolFeeIsOn;
+    uint256 public override protocolFeePart;
+
     uint256[] public sqrtPositionMultiplier;
     uint256[] public fee;
     uint8 public poolTypeCount;

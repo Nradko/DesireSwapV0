@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
+import "./Ticket.sol";
 import "./library/PoolHelper.sol";
-import "./library/Ticket.sol";
+import "./library/TransferHelper.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/IDesireSwapV0Factory.sol";
 import "./interfaces/IDesireSwapV0FlashCallback.sol";
 
-contract DesireSwapV0PoolBody is Ticket, PoolHelper
+contract DesireSwapV0PoolBody is Ticket
 {
-	bool public protocolFeeIsOn;
-
 	address public immutable factory;
 	address public immutable token0;
 	address public immutable token1; 
@@ -63,13 +62,6 @@ contract DesireSwapV0PoolBody is Ticket, PoolHelper
 	event Flash(address msgSender, address recipient, uint256 amount0, uint256 amount1, uint256 paid0, uint256 paid1);
 
 
-
-	bytes4 internal constant SELECTOR = bytes4(keccak256(bytes('transfer(address,uint256)')));
-
-    function _safeTransfer( address token, address to, uint value) internal {
-        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(SELECTOR, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), 'DesireSwapV0: TRANSFER_FAILED');
-    }
 ///
 /// VIEW FUNCTIONS
 ///
@@ -175,20 +167,20 @@ contract DesireSwapV0PoolBody is Ticket, PoolHelper
         require( ( zeroForOne == true && amountOut <= h.value01) ||
                  ( zeroForOne == false && amountOut <= h.value00), 'DesireSwapV0: INSUFFICIENT_POSITION_LIQUIDITY');        
 		
-		uint256 L = LiqCoefficient(h.value00, h.value01, h.value10, h.value11);
+		uint256 L = PoolHelper.LiqCoefficient(h.value00, h.value01, h.value10, h.value11);
         uint256 collectedFee;
-		uint256 amountInHelp = _amountIn(zeroForOne, h.value00, h.value01, h.value10, h.value11, amountOut, L); // do not include fees;
+		uint256 amountInHelp = PoolHelper.amountIn(zeroForOne, h.value00, h.value01, h.value10, h.value11, amountOut, L); // do not include fees;
         uint256 collectedProtocolFee = 0;
 
         amountIn = amountInHelp*10**36/(10**36 - feePercentage);
         collectedFee = amountIn - amountInHelp;
-        if (protocolFeeIsOn)
-            collectedProtocolFee = (collectedFee * protocolFeePercentage)/10**36;
+        if (IDesireSwapV0Factory(factory).protocolFeeIsOn())
+            collectedProtocolFee = (collectedFee * IDesireSwapV0Factory(factory).protocolFeePart())/10**36;
         // token0 for token1 // token0 in; token1 out;
         if( zeroForOne) {
             //??
-            require(LiqCoefficient(h.value00 + amountInHelp, h.value01 - amountOut, h.value10, h.value11) >= L,
-             'DesireSwapV0: LIQ_COEFFICIENT_IS_TO_LOW'); //assure that after swap there is more or equal liquidity. If _amountIn works correctly it can be removed.
+            require(PoolHelper.LiqCoefficient(h.value00 + amountInHelp, h.value01 - amountOut, h.value10, h.value11) >= L,
+             'DesireSwapV0: LIQ_COEFFICIENT_IS_TO_LOW'); //assure that after swap there is more or equal liquidity. If PoolHelper.amountIn works correctly it can be removed.
             //!!
             _modifyPositionReserves(
                 index,
@@ -198,7 +190,7 @@ contract DesireSwapV0PoolBody is Ticket, PoolHelper
         // token1 for token0 // token1 in; token0 out;
         if( zeroForOne == false) {    
             //??
-            require(LiqCoefficient(h.value00 - amountOut, h.value01 + amountInHelp, h.value00, h.value11) >= L,
+            require(PoolHelper.LiqCoefficient(h.value00 - amountOut, h.value01 + amountInHelp, h.value00, h.value11) >= L,
             'DesireSwapV0: LIQ_COEFFICIENT_IS_TO_LOW'); //assure that after swao there is more or equal liquidity. If _amountIn works correctly it can be removed.            
             //!!
             _modifyPositionReserves(
@@ -256,14 +248,14 @@ contract DesireSwapV0PoolBody is Ticket, PoolHelper
             if( s.zeroForOne){
                 require(remained <= totalReserve1);
                 ///!!! token transfer
-                _safeTransfer(token1, s.to, remained);
+                TransferHelper.safeTransfer(token1, s.to, remained);
                 usingReserve = positions[usingPosition].reserve1;        
             }
             // token1 In, token0 Out, tokensForExactTokens
             else{
                 require(remained <= totalReserve0);
                 ///!!! token transfer
-                _safeTransfer(token0, s.to, remained);
+                TransferHelper.safeTransfer(token0, s.to, remained);
                 usingReserve = positions[usingPosition].reserve0;        
                 //???
             }
@@ -294,23 +286,23 @@ contract DesireSwapV0PoolBody is Ticket, PoolHelper
             remained = uint256(s.amount);
             uint256 predictedFee = remained *feePercentage/10**18;
             (h.value00, h.value01, h.value10, h.value11) = getPositionInfo(usingPosition); 
-            uint256 L = LiqCoefficient( h.value00, h.value01, h.value10, h.value11);
+            uint256 L = PoolHelper.LiqCoefficient( h.value00, h.value01, h.value10, h.value11);
             uint256 amountSend =0;
-            uint256 amountOut = _amountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained-predictedFee, L);
+            uint256 amountOut = PoolHelper.amountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained-predictedFee, L);
             while( amountOut >= (s.zeroForOne? h.value01 : h.value00)) {
                 remained -= _swapInPosition(usingPosition, s.to, s.zeroForOne, h.value00);
                 usingPosition = inUsePosition;
                 amountSend += s.zeroForOne ? h.value01 : h.value00;
                 predictedFee = remained *feePercentage/10**18;
                 (h.value00, h.value01, h.value10, h.value11) = getPositionInfo(usingPosition); 
-                L = LiqCoefficient( h.value00, h.value01, h.value10, h.value11);
-                amountOut = _amountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained-predictedFee, L);
+                L = PoolHelper.LiqCoefficient( h.value00, h.value01, h.value10, h.value11);
+                amountOut = PoolHelper.amountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained-predictedFee, L);
             }
             remained -= _swapInPosition(usingPosition, s.to, s.zeroForOne, amountOut);
             amountSend +=amountOut;
 
             //!!!
-            _safeTransfer(s.zeroForOne ? token1: token0, s.to, amountSend);
+            TransferHelper.safeTransfer(s.zeroForOne ? token1: token0, s.to, amountSend);
             
 			h.balance0 = balance0();
             h.balance1 = balance1();
@@ -420,8 +412,8 @@ contract DesireSwapV0PoolBody is Ticket, PoolHelper
             (h.value00, h.value01, h.value10, h.value11) = getPositionInfo(usingPosition); 
             uint256 amount0ToAdd = h.balance0 - lastBalance0 - amount0;
             uint256 amount1ToAdd = h.balance1 - lastBalance1 - amount1;
-			uint256 price0 = _currentPrice(h.value00, h.value01, h.value10, h.value11);
-			uint256 price1 = _currentPrice(h.value00 +amount0ToAdd, h.value01 + amount1ToAdd, h.value10, h.value11);
+			uint256 price0 = PoolHelper.currentPrice(h.value00, h.value01, h.value10, h.value11);
+			uint256 price1 = PoolHelper.currentPrice(h.value00 +amount0ToAdd, h.value01 + amount1ToAdd, h.value10, h.value11);
 			
 			require(amount0ToAdd + amount1ToAdd*price0/10**18 >= positionValue); // twn warunek trzeba sprawdzic czy jest wystarczajacy lub czy nie jest za silny!!!!
 			require(amount0ToAdd + amount1ToAdd*price1/10**18 >= positionValue);
@@ -504,8 +496,8 @@ contract DesireSwapV0PoolBody is Ticket, PoolHelper
 			positions[usingPosition].supplyCoefficient -= supply;
 		}
 		//!!!
-		_safeTransfer(token0, to, h.value00);
-		_safeTransfer(token1, to, h.value01);
+		TransferHelper.safeTransfer(token0, to, h.value00);
+		TransferHelper.safeTransfer(token1, to, h.value01);
 		h.balance0 = balance0();
 		h.balance1 = balance1();
 		//???
@@ -529,8 +521,8 @@ contract DesireSwapV0PoolBody is Ticket, PoolHelper
         uint256 balance0Before = balance0();
         uint256 balance1Before = balance1();
 
-        if (amount0 > 0) _safeTransfer(token0, recipient, amount0);
-        if (amount1 > 0) _safeTransfer(token1, recipient, amount1);
+        if (amount0 > 0) TransferHelper.safeTransfer(token0, recipient, amount0);
+        if (amount1 > 0) TransferHelper.safeTransfer(token1, recipient, amount1);
 
         IDesireSwapV3FlashCallback(msg.sender).desireSwapV3FlashCallback(fee0, fee1, data);
 
