@@ -98,7 +98,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool
 	function burn (address to, uint256 ticketID) external override{
 		address body = IDesireSwapV0Factory(factory).body(); 
 		(bool success, bytes memory data) = body.delegatecall(
-        	abi.encodeWithSignature("burn(aaddress to, uint256 ticketID)", to, ticketID)
+        	abi.encodeWithSignature("burn(address to, uint256 ticketID)", to, ticketID)
         );
 	}
 
