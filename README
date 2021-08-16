@@ -1,5 +1,0 @@
-PoolBody.sol służy jako biblioteka. Tzn. musi zostać zdeployowany przed innymi kontraktami.
-Inne kontrakty będą wywoływać kod PoolBody z użyciem metody delegateCall.
-
-W ten sposób zmniejszono size Factory.sol i Pool.sol. Deployowanie nowych Pooli będzie tańsze, ponieważ są mniejsze (kod jest przechowywany w PoolBody).
-Dzieje się to troche zwiększonym gas-kosztem wykonywania funckji w Pool.
