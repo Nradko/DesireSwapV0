@@ -338,7 +338,11 @@ contract DesireSwapV0PoolBody is Ticket
 			_ticketSupplyData[ticketID][index] = positions[index].supplyCoefficient*positionValue/positions[index].reserve0;
 		}
 		else{
-			_ticketSupplyData[ticketID][index] = positionValue;
+			_ticketSupplyData[ticketID][index] = 
+				PoolHelper.LiqCoefficient(
+					positions[index].reserve0, positions[index].reserve1,
+        			positions[index].sqrtPriceBottom, positions[index].sqrtPriceTop
+				);
 		}
 		positions[index].supplyCoefficient += _ticketSupplyData[ticketID][index];
 		//!!
@@ -352,7 +356,11 @@ contract DesireSwapV0PoolBody is Ticket
 			_ticketSupplyData[ticketID][index] = positions[index].supplyCoefficient*amount1ToAdd/positions[index].reserve1;
 		}
 		else{
-			_ticketSupplyData[ticketID][index] = positionValue;
+			_ticketSupplyData[ticketID][index] = 
+			PoolHelper.LiqCoefficient(
+				positions[index].reserve0, positions[index].reserve1,
+        		positions[index].sqrtPriceBottom, positions[index].sqrtPriceTop
+			);
 		}
 		positions[index].supplyCoefficient += _ticketSupplyData[ticketID][index];
 		//!!
@@ -365,7 +373,7 @@ contract DesireSwapV0PoolBody is Ticket
         int24 highestPositionIndex,
         uint256 positionValue)
         external
-        returns(uint256 amount0 , uint256 amount1)
+        returns(uint256 amount0, uint256 amount1)
     {
         require(highestPositionIndex >= lowestPositionIndex);
 		helpData memory h = helpData({
@@ -412,19 +420,17 @@ contract DesireSwapV0PoolBody is Ticket
             (h.value00, h.value01, h.value10, h.value11) = getPositionInfo(usingPosition); 
             uint256 amount0ToAdd = h.balance0 - lastBalance0 - amount0;
             uint256 amount1ToAdd = h.balance1 - lastBalance1 - amount1;
-			uint256 price0 = PoolHelper.currentPrice(h.value00, h.value01, h.value10, h.value11);
-			uint256 price1 = PoolHelper.currentPrice(h.value00 +amount0ToAdd, h.value01 + amount1ToAdd, h.value10, h.value11);
-			
-			require(amount0ToAdd + amount1ToAdd*price0/10**18 >= positionValue); // twn warunek trzeba sprawdzic czy jest wystarczajacy lub czy nie jest za silny!!!!
-			require(amount0ToAdd + amount1ToAdd*price1/10**18 >= positionValue);
+			uint256 LiqCoefBefore = PoolHelper.LiqCoefficient(h.value00, h.value01, h.value10, h.value11);
+			uint256 LiqCoefAfter = PoolHelper.LiqCoefficient(h.value00 + amount0ToAdd, h.value01 + amount1ToAdd, h.value10, h.value11);
+
 			amount0 += amount0ToAdd;
 			amount1 += amount1ToAdd;
 
             if(positions[usingPosition].supplyCoefficient != 0){
-				_ticketSupplyData[ticketID][usingPosition] = positions[usingPosition].supplyCoefficient * (amount0ToAdd + amount1ToAdd*price1/10**18)/(h.value00 + h.value01*price1/10**18);             
+				_ticketSupplyData[ticketID][usingPosition] = positions[usingPosition].supplyCoefficient * (LiqCoefAfter - LiqCoefBefore)/LiqCoefBefore;             
             } else 
             {
-                _ticketSupplyData[ticketID][usingPosition] = positionValue;                
+                _ticketSupplyData[ticketID][usingPosition] = LiqCoefAfter;                
             }
             //!!
 			positions[usingPosition].supplyCoefficient += _ticketSupplyData[ticketID][usingPosition];
@@ -435,6 +441,7 @@ contract DesireSwapV0PoolBody is Ticket
 		require(h.balance0 >= h.lastBalance0 + amount0 && h.balance1 >= h.lastBalance1 + amount1, 'DesireSwapV0: BALANCES_ARE_TO_LOW');
 	    emit Mint(to, ticketID, lowestPositionIndex, highestPositionIndex, positionValue, amount0, amount1);
         _updateLastBalances(h.balance0, h.balance1);
+		delete h;
     }
 
 ///
@@ -457,7 +464,8 @@ contract DesireSwapV0PoolBody is Ticket
 		positions[index].supplyCoefficient -= supply;
 	}
 
-	function burn (address to, uint256 ticketID) external{
+	function burn (address to, uint256 ticketID) external
+		returns (uint256, uint256){
 		require( _exists(ticketID), 'DesireSwapV0: THE_ERC721_DO_NOT_EXISTS');
 		address owner = Ticket.ownerOf(ticketID);
 		require( tx.origin == owner,'DesireSwapV0: THE_TX.ORIGIN_IS_NOT_THE_OWNER');
@@ -505,6 +513,10 @@ contract DesireSwapV0PoolBody is Ticket
 		emit Burn(owner, ticketID, lowestPositionIndex, highestPositionIndex, _ticketData[ticketID].positionValue, h.value00, h.value01);
 		//!!!
 		_updateLastBalances(h.balance0, h.balance1);
+		uint256 amount0 = h.value00;
+		uint256 amount1 = h.value01;
+		delete h;
+		return (amount0, amount1);
 	}
 
 	//

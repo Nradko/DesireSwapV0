@@ -35,16 +35,6 @@ library PoolHelper {
         return (b + sqrt(b^2 + 4*(DD-(sqrt0*DD)/sqrt1)*x*y))*D/(2*(D-(sqrt0*D)/sqrt1));
     }
 
-    function currentPrice(
-        uint256 reserve0, uint256 reserve1,
-        uint256 sqrt0, uint256 sqrt1)
-        internal pure
-        returns (uint256 currentPrice)
-    {
-        uint256 L = LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
-        currentPrice = (L*L/(reserve0 + L/sqrt1)**2)*reserve1;
-    }
-
     function amountIn(
         bool zeroForOne,
         uint256 reserve0, uint256 reserve1,
@@ -53,7 +43,6 @@ library PoolHelper {
         internal pure
         returns(uint256)
     {
-        uint256 D = 10**18;
         if( zeroForOne) 
             return L**2/(reserve1 + L*sqrt0/10**36 - amountOut) - reserve0;
         else
@@ -71,11 +60,19 @@ library PoolHelper {
         if (zeroForOne)
             return reserve1 - L**2/(reserve0 + L/sqrt1 + amountIn)/10**36;
         else
-            return reserve1 - L**2/(reserve1 + L*sqrt0/10**36 + amountIn)/10**36;
-        
+            return reserve1 - L**2/(reserve1 + L*sqrt0/10**36 + amountIn)/10**36;        
+    }
+    /*UNUSED
+    function currentPrice(
+        uint256 reserve0, uint256 reserve1,
+        uint256 sqrt0, uint256 sqrt1)
+        internal pure
+        returns (uint256)
+    {
+        uint256 L = LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
+        return (L*L/(reserve0 + L/sqrt1)**2)*reserve1;
     }
     */
-
     // returns amount of token0 in that would be in position if all token0 were taken out
     /* UNUSED
     function inToken0Supply(
