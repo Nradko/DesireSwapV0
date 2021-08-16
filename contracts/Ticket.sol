@@ -5,11 +5,11 @@ pragma solidity ^0.8.0;
 contract Ticket{
 
     struct TicketData{
-            int24 lowestPositionIndex;
-            int24 highestPositionIndex;
-            uint256 positionValue;
-            //mapping (int24 => uint256) positionSupplyCoefficient;
-        }
+        int24 lowestPositionIndex;
+        int24 highestPositionIndex;
+        uint256 positionValue;
+        //mapping (int24 => uint256) positionSupplyCoefficient;
+    }
 
     // Mapping from token ID to owner address
     mapping (uint256 => address) internal _owners;
