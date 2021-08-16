@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-interface IDesireSwapV0Factory
-{
+interface IDesireSwapV0Factory {
     event NewPoolType(uint8 poolTypeNumber, uint256 positionMultiplier, uint256 fee);
     event PoolCreated(address token0, address token1, uint8 poolType, address pool);
     event OwnerChanged(address oldOwner, address newOwner);

@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-contract Ticket{
+contract Ticket {
 
-    struct TicketData{
+    struct TicketData {
         int24 lowestPositionIndex;
         int24 highestPositionIndex;
         uint256 positionValue;
@@ -25,19 +25,18 @@ contract Ticket{
 
     uint256 emissionCounter;
 
-    constructor(){
+    constructor() {
         emissionCounter = 0;
     }
 
-
     function numberOf(address owner) public view virtual returns (uint256) {
-        require(owner != address(0), "ERC721: balance query for the zero address");
+        require(owner != address(0), "ERC721: ZERO_ADDRESS");
         return _balances[owner];
     }
 
     function ownerOf(uint256 tokenId) public view virtual returns (address) {
         address owner = _owners[tokenId];
-        require(owner != address(0), "ERC721: owner query for nonexistent token");
+        require(owner != address(0), "ERC721: TOKEN_DOES_NOT_EXIST");
         return owner;
     }
 
@@ -45,9 +44,8 @@ contract Ticket{
         return _owners[tokenId] != address(0);
     }
 
-
-    function _mint(address to) internal virtual returns(uint256){
-        require(to != address(0), "ERC721: mint to the zero address");
+    function _mint(address to) internal virtual returns (uint256) {
+        require(to != address(0), "ERC721: ZERO_ADDRESS");
 
         _balances[to] += 1;
         _owners[emissionCounter] = to;
@@ -56,10 +54,9 @@ contract Ticket{
     }
 
     function _burn(uint256 tokenId) internal virtual {
-        address owner = Ticket.ownerOf(tokenId);
+        address owner = ownerOf(tokenId);
 
         _balances[owner] -= 1;
         delete _owners[tokenId];
-
     }
 }
