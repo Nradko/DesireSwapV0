@@ -524,7 +524,7 @@ contract DesireSwapV0PoolBody is Ticket
         if (amount0 > 0) TransferHelper.safeTransfer(token0, recipient, amount0);
         if (amount1 > 0) TransferHelper.safeTransfer(token1, recipient, amount1);
 
-        IDesireSwapV3FlashCallback(msg.sender).desireSwapV3FlashCallback(fee0, fee1, data);
+        IDesireSwapV0FlashCallback(msg.sender).desireSwapV0FlashCallback(fee0, fee1, data);
 
         uint256 balance0After = balance0();
         uint256 balance1After = balance1();
