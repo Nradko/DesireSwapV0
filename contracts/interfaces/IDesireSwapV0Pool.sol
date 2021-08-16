@@ -35,7 +35,7 @@ interface IDesireSwapV0Pool
 	function burn (address to, uint256 ticketID) external;
 
 	function flash(
-		address to,
+	address to,
         uint256 amount0,
         uint256 amount1,
         bytes calldata data
