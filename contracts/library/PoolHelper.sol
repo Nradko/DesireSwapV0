@@ -26,13 +26,23 @@ library PoolHelper {
         uint256 x, uint256 y,
         uint256 sqrt0, uint256 sqrt1)
         internal pure
-        returns (uint256 liqCoefficient)
+        returns (uint256)
     {
-        //price is 10**36*real_price
+        //sqrtprice is 10**18*sqrt_real_price
         uint256 DD = 10**36;
         uint256 D = 10**18;
-        uint256 b = x*(DD)/sqrt1 + y**sqrt0;
-        liqCoefficient = (b + sqrt(b^2 + 4*(DD-(sqrt0*DD)/sqrt1)*D*x*y))/(2*(DD-(sqrt0*DD)/sqrt1));
+        uint256 b = x*sqrt0 + y*DD/sqrt1;
+        return (b + sqrt(b^2 + 4*(DD-(sqrt0*DD)/sqrt1)*x*y))*D/(2*(D-(sqrt0*D)/sqrt1));
+    }
+
+    function currentPrice(
+        uint256 reserve0, uint256 reserve1,
+        uint256 sqrt0, uint256 sqrt1)
+        internal pure
+        returns (uint256 currentPrice)
+    {
+        uint256 L = LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
+        currentPrice = (L*L/(reserve0 + L/sqrt1)**2)*reserve1;
     }
 
     function amountIn(
@@ -41,15 +51,13 @@ library PoolHelper {
         uint256 sqrt0, uint256 sqrt1,
         uint256 amountOut, uint256 L)
         internal pure
-        returns(uint256 amountIn)
+        returns(uint256)
     {
         uint256 D = 10**18;
-        if( zeroForOne) {
-            amountIn = amountOut * ( reserve0*D + L*sqrt0)/(reserve1 + (L*D)/sqrt1 - amountOut*D)/D;
-        }
-        else{
-            amountIn = amountOut * ( reserve1*D + (L*D)*D/sqrt1)/(reserve0*D + sqrt0*L - amountOut*D)/D;
-        }
+        if( zeroForOne) 
+            return L**2/(reserve1 + L*sqrt0/10**36 - amountOut) - reserve0;
+        else
+            return L**2/(reserve0 + L/sqrt1 - amountOut) - reserve1;
     }
 
     function amountOut(
@@ -58,16 +66,15 @@ library PoolHelper {
         uint256 sqrt0, uint256 sqrt1,
         uint256 amountIn, uint256 L)
         internal pure
-        returns(uint256 amountOut)
+        returns(uint256)
     {
-        uint256 D = 10**18;
-        if (zeroForOne){
-            amountOut = amountIn * ( reserve1*D + (L*D)*D/sqrt1)/(reserve0*D + sqrt0*L + amountIn*D)/D;
-        }
-        else{
-            amountOut = amountIn * ( reserve0*D + L/sqrt0)/(reserve1*D + (L*D)*D/sqrt1 + amountIn*D)/D;
-        }
+        if (zeroForOne)
+            return reserve1 - L**2/(reserve0 + L/sqrt1 + amountIn)/10**36;
+        else
+            return reserve1 - L**2/(reserve1 + L*sqrt0/10**36 + amountIn)/10**36;
+        
     }
+    */
 
     // returns amount of token0 in that would be in position if all token0 were taken out
     /* UNUSED
@@ -96,15 +103,6 @@ library PoolHelper {
     */
 
     // currentPrice *10**36
-    function currentPrice(
-        uint256 reserve0, uint256 reserve1,
-        uint256 sqrt0, uint256 sqrt1)
-        internal pure
-        returns (uint256 currentPrice)
-    {
-        uint256 L = LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
-        currentPrice = (L*L/(reserve0 + L/sqrt1)**2)*reserve1;
-    }
     /*UNUSED
     function inToken0Value(
         uint256 reserve0, uint256 reserve1,
