@@ -5,10 +5,14 @@ import "./Ticket.sol";
 import "./library/PoolHelper.sol";
 import "./library/TransferHelper.sol";
 import "./interfaces/IERC20.sol";
-import "./interfaces/IDesireSwapV0Factory.sol";
-import "./interfaces/IDesireSwapV0FlashCallback.sol";
+import "./interfaces/IDesireSwapV0Factory.sol"; 	
+
+import "./interfaces/callback/IDesireSwapV0MintCallback.sol";
+import "./interfaces/callback/IDesireSwapV0SwapCallback.sol";
+import "./interfaces/callback/IDesireSwapV0FlashCallback.sol";
 
 contract DesireSwapV0PoolBody is Ticket {
+	uint256 private constant D = 10**18;
 	address public immutable factory;
 	address public immutable token0;
 	address public immutable token1; 
@@ -117,14 +121,14 @@ contract DesireSwapV0PoolBody is Ticket {
 			if(!positions[index-1].activated)	// shouldnt be another way around as we try to exceed the highest position? (index+1)
 				activate(index-1);
 			positions[index].sqrtPriceBottom = positions[index-1].sqrtPriceTop;
-			positions[index].sqrtPriceTop = positions[index].sqrtPriceBottom * sqrtPositionMultiplier / PoolHelper.D;
+			positions[index].sqrtPriceTop = positions[index].sqrtPriceBottom * sqrtPositionMultiplier / D;
 		}
 		else if(index < lowestActivatedPosition) {
 			lowestActivatedPosition = index;
 			if(!positions[index+1].activated)	// shouldnt be another way around as we try to exceed the lowest position? (index-1)
 				activate(index+1);
 			positions[index].sqrtPriceTop = positions[index+1].sqrtPriceBottom;
-			positions[index].sqrtPriceBottom = positions[index].sqrtPriceTop * PoolHelper.D / sqrtPositionMultiplier;
+			positions[index].sqrtPriceBottom = positions[index].sqrtPriceTop * D / sqrtPositionMultiplier;
 		}
 		positions[index].activated = true;
 		emit PositionActivated(index);
@@ -179,7 +183,8 @@ contract DesireSwapV0PoolBody is Ticket {
         // token0 for token1 // token0 in; token1 out;
         if(zeroForOne) {
             //??
-            require(PoolHelper.LiqCoefficient(h.value00 + amountInHelp, h.value01 - amountOut, h.value10, h.value11) >= L,
+            require(PoolHelper.LiqCoefficient(h.value00 + amountInHelp, h.value01 - amountOut, h.value10, h.value11)
+				>= PoolHelper.LiqCoefficient(h.value00, h.value01, h.value10, h.value11),
              'DesireSwapV0: LIQ_COEFFICIENT_IS_TOO_LOW'); //assure that after swap there is more or equal liquidity. If PoolHelper.AmountIn works correctly it can be removed.
             //!!
             _modifyPositionReserves(
@@ -190,7 +195,8 @@ contract DesireSwapV0PoolBody is Ticket {
         // token1 for token0 // token1 in; token0 out;
         else {    
             //??
-            require(PoolHelper.LiqCoefficient(h.value00 - amountOut, h.value01 + amountInHelp, h.value00, h.value11) >= L,
+            require(PoolHelper.LiqCoefficient(h.value00 - amountOut, h.value01 + amountInHelp, h.value00, h.value11) 
+				>= PoolHelper.LiqCoefficient(h.value00, h.value01, h.value10, h.value11),
             'DesireSwapV0: LIQ_COEFFICIENT_IS_TOO_LOW'); //assure that after swao there is more or equal liquidity. If PoolHelper.AmountIn works correctly it can be removed.            
             //!!
             _modifyPositionReserves(
@@ -293,7 +299,7 @@ contract DesireSwapV0PoolBody is Ticket {
         }
 		//!!!
 		TransferHelper.safeTransfer(s.zeroForOne ? token1 : token0, s.to, amountSend);
-		IDesireSwapV0Callback(msg.sender).desireSwapV0SwapCallback(
+		IDesireSwapV0SwapCallback(msg.sender).desireSwapV0SwapCallback(
 			s.zeroForOne ? int256(amountRecieved) : -int256(amountSend),
 			s.zeroForOne ? -int256(amountSend) : int256(amountRecieved),
 			data
@@ -363,7 +369,8 @@ contract DesireSwapV0PoolBody is Ticket {
         address to,
         int24 lowestPositionIndex,
         int24 highestPositionIndex,
-        uint256 positionValue)
+        uint256 positionValue,
+		bytes calldata data)
         external
         returns(uint256 amount0, uint256 amount1)
     {
@@ -427,7 +434,7 @@ contract DesireSwapV0PoolBody is Ticket {
 			//!!
             _modifyPositionReserves(usingPosition, amount0ToAdd, amount1ToAdd, true ,true); 
         }
-		IDesireSwapV0Callback(msg.sender).desireSwapV0MintCallback(amount0, amount1);
+		IDesireSwapV0MintCallback(msg.sender).desireSwapV0MintCallback(amount0, amount1, data);
 		///???
 		require(h.balance0 >= h.lastBalance0 + amount0 && h.balance1 >= h.lastBalance1 + amount1, 'DesireSwapV0: BALANCES_ARE_TOO_LOW');
 	    emit Mint(to, ticketID, lowestPositionIndex, highestPositionIndex, positionValue, amount0, amount1);
