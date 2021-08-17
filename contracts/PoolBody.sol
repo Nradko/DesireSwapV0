@@ -427,6 +427,7 @@ contract DesireSwapV0PoolBody is Ticket {
 			//!!
             _modifyPositionReserves(usingPosition, amount0ToAdd, amount1ToAdd, true ,true); 
         }
+		IDesireSwapV0Callback(msg.sender).desireSwapV0MintCallback(amount0, amount1);
 		///???
 		require(h.balance0 >= h.lastBalance0 + amount0 && h.balance1 >= h.lastBalance1 + amount1, 'DesireSwapV0: BALANCES_ARE_TOO_LOW');
 	    emit Mint(to, ticketID, lowestPositionIndex, highestPositionIndex, positionValue, amount0, amount1);
