@@ -464,7 +464,7 @@ contract DesireSwapV0PoolBody is Ticket {
 		returns (uint256, uint256) {
 		require(_exists(ticketID), 'DesireSwapV0: TOKEN_DOES_NOT_EXISTS');
 		address owner = Ticket.ownerOf(ticketID);
-		require(msg.sender == owner,'DesireSwapV0: SENDER_IS_NOT_THE_OWNER');
+		require(tx.origin == owner,'DesireSwapV0: SENDER_IS_NOT_THE_OWNER');
 		_burn(ticketID);
 
 		helpData memory h;
