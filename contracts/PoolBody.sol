@@ -236,6 +236,7 @@ contract DesireSwapV0PoolBody is Ticket {
 			value10: 0, value11: 0});
 		uint256 usingReserve;
         uint256 amountRecieved;
+		uint256 amountSend;
 		uint256 remained;
         int24 usingPosition = inUsePosition;
         
@@ -247,36 +248,24 @@ contract DesireSwapV0PoolBody is Ticket {
             remained = uint256(-s.amount);
             if( s.zeroForOne){
                 require(remained <= totalReserve1);
-                ///!!! token transfer
-                TransferHelper.safeTransfer(token1, s.to, remained);
                 usingReserve = positions[usingPosition].reserve1;        
             }
             // token1 In, token0 Out, tokensForExactTokens
             else{
                 require(remained <= totalReserve0);
-                ///!!! token transfer
-                TransferHelper.safeTransfer(token0, s.to, remained);
                 usingReserve = positions[usingPosition].reserve0;        
-                //???
             }
-                while( remained > usingReserve) {
-                    amountRecieved += _swapInPosition( usingPosition, s.to, s.zeroForOne, usingReserve);
-                    remained -= usingReserve;
-                    usingPosition = inUsePosition;
-                    usingReserve = s.zeroForOne ? positions[usingPosition].reserve1 : positions[usingPosition].reserve0;
-                }
-                amountRecieved += _swapInPosition( usingPosition, s.to, s.zeroForOne, remained);
-                h.balance0 = balance0();
-                h.balance1 = balance1();
-            if( s.zeroForOne){
-                require( h.balance0 >= h.lastBalance0 + amountRecieved && h.balance1 >= h.lastBalance1 - uint256(-s.amount),
-                        'DesireSwapV0: BALANCES_ARE_T0O_LOW');
-            } else {
-                require( h.balance1 >= h.lastBalance1 + amountRecieved && h.balance0 >= h.lastBalance0 - uint256(-s.amount),
-                        'DesireSwapV0: BALANCES_ARE_T0O_LOW');
+            while( remained > usingReserve && 
+				(s.zeroForOne ? sqrtPriceLimit > positions[usingPosition].sqrtPriceTop : sqrtPriceLimit < positions[usingPosition].sqrtPriceBottom
+				|| sqrtPriceLimit == 0)
+			){
+                amountRecieved += _swapInPosition( usingPosition, s.to, s.zeroForOne, usingReserve);
+				remained -= usingReserve;
+                usingPosition = inUsePosition;
+                usingReserve = s.zeroForOne ? positions[usingPosition].reserve1 : positions[usingPosition].reserve0;
             }
-
-            
+            amountRecieved += _swapInPosition( usingPosition, s.to, s.zeroForOne, remained);
+			amountSend = uint256(-s.amount) - remained; 
         } 
         //
         //  exactTokensForTokens
@@ -286,9 +275,11 @@ contract DesireSwapV0PoolBody is Ticket {
             remained = uint256(s.amount);
             uint256 predictedFee = remained *feePercentage/10**18;
             (h.value00, h.value01, h.value10, h.value11) = getPositionInfo(usingPosition);
-            uint256 amountSend = 0;
             uint256 amountOut = PoolHelper.AmountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained-predictedFee);
-            while(amountOut >= (s.zeroForOne? h.value01 : h.value00)) {
+            while(amountOut >= (s.zeroForOne? h.value01 : h.value00) &&
+				(s.zeroForOne ? sqrtPriceLimit > positions[usingPosition].sqrtPriceTop : sqrtPriceLimit < positions[usingPosition].sqrtPriceBottom
+				|| sqrtPriceLimit == 0)
+			) {
                 remained -= _swapInPosition(usingPosition, s.to, s.zeroForOne, h.value00);
                 usingPosition = inUsePosition;
                 amountSend += s.zeroForOne ? h.value01 : h.value00;
@@ -298,23 +289,26 @@ contract DesireSwapV0PoolBody is Ticket {
             }
             remained -= _swapInPosition(usingPosition, s.to, s.zeroForOne, amountOut);
             amountSend += amountOut;
-
-            //!!!
-            TransferHelper.safeTransfer(s.zeroForOne ? token1: token0, s.to, amountSend);
-            
-			h.balance0 = balance0();
-            h.balance1 = balance1();
-            if( s.zeroForOne){
-                //???
-                require( h.balance0 >= h.lastBalance0 + uint256(s.amount) && h.balance1 >= h.lastBalance1 - amountSend,
-                        'DesireSwapV0: BALANCES_ARE_T0O_LOW');            
-            }
-            else{
-                //???
-                require( h.balance0 >= h.lastBalance0 - amountSend  && h.balance1 >= h.lastBalance1 + uint256(s.amount),
-                        'DesireSwapV0: BALANCES_ARE_T0O_LOW');
-            }
+			amountRecieved = uint256(s.amount) - remained;
         }
+		//!!!
+		TransferHelper.safeTransfer(s.zeroForOne ? token1 : token0, s.to, amountSend);
+		IDesireSwapV0Callback(msg.sender).desireSwapV0SwapCallback(
+			s.zeroForOne ? int256(amountRecieved) : -int256(amountSend),
+			s.zeroForOne ? -int256(amountSend) : int256(amountRecieved),
+			data
+		);
+		h.balance0 = balance0();
+        h.balance1 = balance1();
+        //???
+		if( s.zeroForOne){
+			require( h.balance0 >= h.lastBalance0 + amountRecieved && h.balance1 >= h.lastBalance1 - amountSend,
+	            'DesireSwapV0: BALANCES_ARE_T0O_LOW');
+        } else {
+            require( h.balance1 >= h.lastBalance1 + amountRecieved && h.balance0 >= h.lastBalance0 - amountSend,
+                    'DesireSwapV0: BALANCES_ARE_T0O_LOW');
+        }	
+
         int256 amount0 = int256(h.balance0) - int256(h.lastBalance0);
 		int256 amount1 = int256(h.balance1) - int256(h.lastBalance1);
 		_updateLastBalances(h.balance0, h.balance1);
