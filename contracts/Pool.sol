@@ -7,9 +7,7 @@ import "./interfaces/IERC20.sol";
 import './interfaces/IDesireSwapV0Factory.sol';
 import './interfaces/IDesireSwapV0Pool.sol';
 
-contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool
-{
-
+contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	address public immutable factory;
 	address public immutable token0;
 	address public immutable token1;
@@ -33,9 +31,9 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool
 		uint256 supplyCoefficient; 	//
 		bool activated;
 	}
-	mapping( int24 => Position) private positions;
+	mapping(int24 => Position) private positions;
 
-	constructor (
+	constructor(
 		address _factory, address _token0, address _token1,
 		uint256 _sqrtPositionMultiplier, uint256 _feePercentage,
 		uint256 _startingSqrtPriceBottom
@@ -51,12 +49,12 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool
 		positions[0].activated = true;
 	}
 
-	function getLastBalances() external override view returns (uint256 _lastBalance0, uint256 _lastBalance1){
+	function getLastBalances() external override view returns (uint256 _lastBalance0, uint256 _lastBalance1) {
 		_lastBalance0 = lastBalance0;
 		_lastBalance1 = lastBalance1;
 	}
 
-	function getTotalReserves() external override view returns (uint256 _totalReserve0, uint256 _totalReserve1){
+	function getTotalReserves() external override view returns (uint256 _totalReserve0, uint256 _totalReserve1) {
 		_totalReserve0 = totalReserve0;
 		_totalReserve1 = totalReserve1;
 	}
@@ -93,9 +91,9 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool
 			(bool success, bytes memory data) = body.delegatecall(
             	abi.encodeWithSignature("mint(address to, int24 lowestPositionIndex, int24 highestPositionIndex, uint256 positionValue)", to, lowestPositionIndex, highestPositionIndex, positionValue)
         );
-		}
+	}
 
-	function burn (address to, uint256 ticketID) external override{
+	function burn(address to, uint256 ticketID) external override {
 		address body = IDesireSwapV0Factory(factory).body(); 
 		(bool success, bytes memory data) = body.delegatecall(
         	abi.encodeWithSignature("burn(address to, uint256 ticketID)", to, ticketID)
@@ -114,7 +112,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool
         );
 	}
 
-	function collectFee(address token, uint256 amount) external override{
+	function collectFee(address token, uint256 amount) external override {
 		require(msg.sender == IDesireSwapV0Factory(factory).owner());
 		TransferHelper.safeTransfer(token, IDesireSwapV0Factory(factory).feeCollector(), amount);
 		require( IERC20(token0).balanceOf(address(this)) >= totalReserve0
