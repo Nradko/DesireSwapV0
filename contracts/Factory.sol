@@ -18,6 +18,7 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
     }
     poolTypeData[] poolType;
     uint8 public poolTypeCount;
+    mapping(uint256 => uint8) feeToPoolTypeNumber;
     mapping(address => mapping(address => mapping(uint8 => address))) public poolAddress;
 
     modifier onlyBy(address _account) {
@@ -35,6 +36,7 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
 
 
     function addPoolType(uint256 _sqrtPositionMultiplier, uint256 _fee) external override onlyBy(owner) {
+        require(feeToPoolTypeNumber[_fee] == 0);
         poolType[poolTypeCount] = poolTypeData({
             sqrtPositionMultiplier: _sqrtPositionMultiplier,
             fee: _fee
