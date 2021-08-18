@@ -15,6 +15,7 @@ interface IDesireSwapV0Factory {
 	function protocolFeePart() external view returns (uint256 _protocolFeePart);
 	function addPoolType(uint256 _sqrtPositionMultiplier, uint256 _fee) external;
   	function createPool(address _tokenA, address _tokenB, uint8 _poolType, uint256 _startingSqrtBottomPrice) external;
+	function getPoolAddress(address _tokenA, address _tokenB, uint256 _fee) external view returns(address);
 	function setOwner(address _owner) external;
     function setFeeCollector(address _feeCollector) external;
 	function setBody(address _body) external;

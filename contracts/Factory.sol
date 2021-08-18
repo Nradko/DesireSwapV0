@@ -59,6 +59,11 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
         emit PoolCreated(token0, token1, _poolTypeNumber, pool);
     }
 
+    function getPoolAddress(address _tokenA, address _tokenB, uint256 _fee)
+    external override view returns(address){
+        return poolAddress[_tokenA][_tokenB][feeToPoolTypeNumber[_fee]];
+    }
+
     function setOwner(address _owner) external override onlyBy(owner) {
         emit OwnerChanged(owner, _owner);
         owner = _owner;
