@@ -94,8 +94,8 @@ contract DesireSwapV0PoolBody is Ticket {
 
 	function _modifyPositionReserves(
 		int24 index,
-		uint256 toAdd0, uint256 toAdd1,
-		bool add0, bool add1)
+		uint256 toAdd0, bool add0,
+		uint256 toAdd1, bool add1)
 		private
 	{
 		positions[index].reserve0 = add0 ? positions[index].reserve0 + toAdd0 : positions[index].reserve0 - toAdd0;
@@ -111,6 +111,7 @@ contract DesireSwapV0PoolBody is Ticket {
             emit InUsePositionChanged(index+1);
         }
 	}
+
 ///
 /// Position activation
 ///
@@ -189,8 +190,8 @@ contract DesireSwapV0PoolBody is Ticket {
             //!!
             _modifyPositionReserves(
                 index,
-                amountIn - collectedProtocolFee,
-                amountOut, true, false);
+                amountIn - collectedProtocolFee, true,
+                amountOut, false);
         }
         // token1 for token0 // token1 in; token0 out;
         else {    
@@ -201,8 +202,8 @@ contract DesireSwapV0PoolBody is Ticket {
             //!!
             _modifyPositionReserves(
                 index,
-                amountOut,
-                amountIn - collectedProtocolFee, false, true);
+                amountOut, false,
+                amountIn - collectedProtocolFee, true);
         }
         emit SwapInPosition(msg.sender, index, zeroForOne, amountIn, amountOut, to);
 		delete h;
@@ -230,7 +231,7 @@ contract DesireSwapV0PoolBody is Ticket {
         bytes calldata data
     ) external returns (int256, int256)
     {        
-        swapData memory s= swapData({
+        swapData memory s = swapData({
 			to: to, zeroForOne: zeroForOne,
 			amount: amount, sqrtPriceLimit: sqrtPriceLimit,
 			data: data
@@ -252,18 +253,19 @@ contract DesireSwapV0PoolBody is Ticket {
         // token0 In, token1 Out, tokensForExactTokens
         if(s.amount <= 0){
             remained = uint256(-s.amount);
-            if( s.zeroForOne){
+            if(s.zeroForOne){
                 require(remained <= totalReserve1);
                 usingReserve = positions[usingPosition].reserve1;        
             }
             // token1 In, token0 Out, tokensForExactTokens
-            else{
+            else {
                 require(remained <= totalReserve0);
                 usingReserve = positions[usingPosition].reserve0;        
             }
-            while( remained > usingReserve && 
+
+            while(remained > usingReserve && 
 				(s.zeroForOne ? sqrtPriceLimit > positions[usingPosition].sqrtPriceTop : sqrtPriceLimit < positions[usingPosition].sqrtPriceBottom
-				|| sqrtPriceLimit == 0)
+				|| sqrtPriceLimit == 0)	// infinite loop as sqrtPriceLimit will never change
 			){
                 amountRecieved += _swapInPosition( usingPosition, s.to, s.zeroForOne, usingReserve);
 				remained -= usingReserve;
@@ -344,7 +346,7 @@ contract DesireSwapV0PoolBody is Ticket {
 		}
 		positions[index].supplyCoefficient += _ticketSupplyData[ticketID][index];
 		//!!
-		_modifyPositionReserves(index, positionValue, 0, true, true); 
+		_modifyPositionReserves(index, positionValue, true, 0, true); 
 	}
 	function _printOnTicket1(int24 index, uint256 ticketID, uint256 positionValue)
 	private returns(uint256 amount1ToAdd) { 
@@ -362,9 +364,10 @@ contract DesireSwapV0PoolBody is Ticket {
 		}
 		positions[index].supplyCoefficient += _ticketSupplyData[ticketID][index];
 		//!!
-		_modifyPositionReserves(index, 0, amount1ToAdd, true, true); 
+		_modifyPositionReserves(index, 0, true, amount1ToAdd, true); 
 	}
 		
+	// Returns (value of token0 added to positions, value of token1 added to positions)
 	function mint(
         address to,
         int24 lowestPositionIndex,
@@ -375,16 +378,21 @@ contract DesireSwapV0PoolBody is Ticket {
         returns(uint256 amount0, uint256 amount1)
     {
         require(highestPositionIndex >= lowestPositionIndex);
+		int24 usingPosition = inUsePosition;   
 		helpData memory h = helpData({
 			lastBalance0: lastBalance0, lastBalance1: lastBalance1,
 			balance0: balance0(), balance1: balance1(),
-			value00: 0, value01: 0,
-			value10: 0, value11: 0});
+			value00: 0, value01: 0, value10: 0, value11: 0});
+		// value0? = reserve of token? in position
+		// value10 = sqrtPriceBottom of position
+		// value11 = sqrtPriceTop of position
+		(h.value00, h.value01, h.value10, h.value11) = getPositionInfo(usingPosition); 
+		
 		uint256 ticketID = _mint(to);
-        int24 usingPosition = inUsePosition;   
-		_ticketData[ticketID].lowestPositionIndex = lowestPositionIndex;
-		_ticketData[ticketID].highestPositionIndex = highestPositionIndex;
-		_ticketData[ticketID].positionValue = positionValue;
+		_ticketData[ticketID] = TicketData({
+			lowestPositionIndex: lowestPositionIndex,
+			highestPositionIndex: highestPositionIndex,
+			positionValue: positionValue});
 
         if(highestPositionIndex < usingPosition){
 			//in this case positions.reserve1 should be 0
@@ -412,9 +420,7 @@ contract DesireSwapV0PoolBody is Ticket {
 				amount1 +=  _printOnTicket1(i, ticketID, positionValue); 
             }
 
-
             if(!positions[usingPosition].activated) activate(usingPosition);
-            (h.value00, h.value01, h.value10, h.value11) = getPositionInfo(usingPosition); 
             uint256 amount0ToAdd = h.balance0 - lastBalance0 - amount0;
             uint256 amount1ToAdd = h.balance1 - lastBalance1 - amount1;
 			uint256 LiqCoefBefore = PoolHelper.LiqCoefficient(h.value00, h.value01, h.value10, h.value11);
@@ -423,16 +429,14 @@ contract DesireSwapV0PoolBody is Ticket {
 			amount0 += amount0ToAdd;
 			amount1 += amount1ToAdd;
 
-            if(positions[usingPosition].supplyCoefficient != 0){
-				_ticketSupplyData[ticketID][usingPosition] = positions[usingPosition].supplyCoefficient * (LiqCoefAfter - LiqCoefBefore)/LiqCoefBefore;             
-            } else 
-            {
-                _ticketSupplyData[ticketID][usingPosition] = LiqCoefAfter;                
-            }
+			_ticketSupplyData[ticketID][usingPosition] = positions[usingPosition].supplyCoefficient != 0 ?
+				positions[usingPosition].supplyCoefficient * (LiqCoefAfter - LiqCoefBefore)/LiqCoefBefore
+				: LiqCoefAfter;
+
             //!!
 			positions[usingPosition].supplyCoefficient += _ticketSupplyData[ticketID][usingPosition];
 			//!!
-            _modifyPositionReserves(usingPosition, amount0ToAdd, amount1ToAdd, true ,true); 
+            _modifyPositionReserves(usingPosition, amount0ToAdd, true, amount1ToAdd, true); 
         }
 		IDesireSwapV0MintCallback(msg.sender).desireSwapV0MintCallback(amount0, amount1, data);
 		///???
@@ -445,6 +449,7 @@ contract DesireSwapV0PoolBody is Ticket {
 ///
 ///	REDEEM LIQ
 ///
+	// Returns (amount of token0 redeemed from burn, amount of token1 redeemed from burn)
 	// zeroOrOne 0=false if only token0 in reserves, 1=true if only token 1 in reserves.
 	function _readTicket(int24 index, uint256 ticketID, bool zeroOrOne)
 	private returns(uint256 amountToTransfer){
@@ -452,11 +457,11 @@ contract DesireSwapV0PoolBody is Ticket {
 		if(zeroOrOne){
 			amountToTransfer = supply*positions[index].reserve0/positions[index].supplyCoefficient;
 			//!!
-			_modifyPositionReserves(index, amountToTransfer, 0, false, false);
+			_modifyPositionReserves(index, amountToTransfer, false, 0, false);
 		} else {
 			amountToTransfer = supply*positions[index].reserve1/positions[index].supplyCoefficient;
 			//!!
-			_modifyPositionReserves(index, 0, amountToTransfer, false, false);			
+			_modifyPositionReserves(index, 0, false, amountToTransfer, false);			
 		}
 		//!!
 		positions[index].supplyCoefficient -= supply;
@@ -466,39 +471,32 @@ contract DesireSwapV0PoolBody is Ticket {
 		returns (uint256, uint256) {
 		require(_exists(ticketID), 'DesireSwapV0: TOKEN_DOES_NOT_EXISTS');
 		address owner = Ticket.ownerOf(ticketID);
-		require(tx.origin == owner,'DesireSwapV0: SENDER_IS_NOT_THE_OWNER');
+		require(tx.origin == owner,'DesireSwapV0: TX.ORIGIN_IS_NOT_THE_OWNER');
 		_burn(ticketID);
 
 		helpData memory h;
 		h.lastBalance0 = lastBalance0;
 		h.lastBalance1 = lastBalance1;
+
 		int24 usingPosition = inUsePosition;
-			
 		int24 highestPositionIndex = _ticketData[ticketID].highestPositionIndex;
 		int24 lowestPositionIndex = _ticketData[ticketID].lowestPositionIndex;
-		if(highestPositionIndex < usingPosition){
-			for(int24 i = highestPositionIndex; i >= highestPositionIndex; i--){
-				h.value00 += _readTicket(i, ticketID, false);
-			}
-		} else if(lowestPositionIndex > usingPosition){
-			for(int24 i = lowestPositionIndex; i <= highestPositionIndex; i++){
-				h.value01 += _readTicket(i, ticketID, true);
-			}
-		} else
-		{
-			for(int24 i = highestPositionIndex; i > usingPosition; i--){
-				h.value00 += _readTicket(i, ticketID, false);
-			}
-			for(int24 i = lowestPositionIndex; i < usingPosition; i++){
-				h.value01 += _readTicket(i, ticketID, true);
-			}
-				
+
+		// value0? = total amount of token? from burn
+		for(int24 i = highestPositionIndex; i > usingPosition && i >= lowestPositionIndex; i--){
+			h.value00 += _readTicket(i, ticketID, false);
+		}
+		for(int24 i = lowestPositionIndex; i < usingPosition && i <= highestPositionIndex; i++){
+			h.value01 += _readTicket(i, ticketID, true);
+		}
+		if(lowestPositionIndex <= usingPosition && usingPosition <= highestPositionIndex){
 			uint256 supply = _ticketSupplyData[ticketID][usingPosition];
+			// value1? = amount of token? burned in usingPosition
 			h.value10 = supply*positions[usingPosition].reserve0/positions[usingPosition].supplyCoefficient;
 			h.value11 = supply*positions[usingPosition].reserve1/positions[usingPosition].supplyCoefficient;
 			h.value00 += h.value10;
 			h.value01 += h.value11;
-			_modifyPositionReserves(usingPosition, h.value10, h.value11, false, false);
+			_modifyPositionReserves(usingPosition, h.value10, false, h.value11, false);
 			positions[usingPosition].supplyCoefficient -= supply;
 		}
 		//!!!

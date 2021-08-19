@@ -8,7 +8,6 @@ contract Ticket {
         int24 lowestPositionIndex;
         int24 highestPositionIndex;
         uint256 positionValue;
-        //mapping (int24 => uint256) positionSupplyCoefficient;
     }
 
     // Mapping from token ID to owner address
