@@ -1,16 +1,23 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
+import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
+
 import "./Ticket.sol";
 import "./library/TransferHelper.sol";
 import "./interfaces/IERC20.sol";
 import './interfaces/IDesireSwapV0Factory.sol';
 import './interfaces/IDesireSwapV0Pool.sol';
 
-contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
-	address public immutable factory;
-	address public immutable token0;
-	address public immutable token1;
+contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool, IUniswapV3Pool {
+	address public override immutable factory;
+	address public override immutable token0;
+	address public override immutable token1;
+
+	// UV3Pool
+	uint24 public override fee;
+	int24 public override tickSpacing;
+	uint128 public override maxLiquidityPerTick;
 
 	uint256 public immutable sqrtPositionMultiplier;   // example: 100100000.... is 1.001 (* 10**36)
 	uint256 public immutable feePercentage;            //  0 fee is 0 // 100% fee is 1* 10**36;
@@ -105,7 +112,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         uint256 amount0,
         uint256 amount1,
         bytes calldata data
-    ) external override{
+    ) external override(IDesireSwapV0Pool, IUniswapV3PoolActions){
 		address body = IDesireSwapV0Factory(factory).body(); 
 		(bool success, bytes memory data) = body.delegatecall(
         	abi.encodeWithSignature("flash(address to, uint256 amount0, uint256 amount1, bytes calldata data)",to, amount0, amount1, data)

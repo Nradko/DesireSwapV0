@@ -1,0 +1,25 @@
+{
+  "name": "desireswapv0",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DesiredDesire/DesireSwapV0.git"
+  },
+  "author": "DesireSwap",
+  "license": "GPL-2.0",
+  "bugs": {
+    "url": "https://github.com/DesiredDesire/DesireSwapV0/issues"
+  },
+  "homepage": "https://github.com/DesiredDesire/DesireSwapV0#readme",
+  "dependencies": {
+    "@uniswap/v3-periphery": "^1.1.1"
+  },
+  "devDependencies": {
+    "hardhat": "^2.6.1"
+  }
+}
