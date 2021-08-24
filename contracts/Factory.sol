@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
+import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
+
 import"./Pool.sol";
 import"./interfaces/IDesireSwapV0Factory.sol";
 
-contract DesireSwapV0Factory is IDesireSwapV0Factory {
-    address public override owner;
+contract DesireSwapV0Factory is IUniswapV3Factory, IDesireSwapV0Factory {
+    address public override(IUniswapV3Factory, IDesireSwapV0Factory) owner;
     address public override feeCollector;
     address public override body;
 
@@ -59,7 +61,7 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
         emit PoolCreated(token0, token1, _poolTypeNumber, pool);
     }
 
-    function setOwner(address _owner) external override onlyBy(owner) {
+    function setOwner(address _owner) external override(IUniswapV3Factory, IDesireSwapV0Factory) onlyBy(owner) {
         emit OwnerChanged(owner, _owner);
         owner = _owner;
     }
@@ -73,4 +75,24 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
         emit BodyChanged(body, _body);
         body = _body;
     }
+
+    // UV3Factory
+    function feeAmountTickSpacing(uint24 fee) external override view returns (int24) {}
+
+    function getPool(
+        address tokenA,
+        address tokenB,
+        uint24 fee
+    ) external override view returns (address pool) {
+        require(fee == uint24(uint8(fee)));
+        return poolAddress[tokenA][tokenB][uint8(fee)];
+    }
+
+    function createPool(
+        address tokenA,
+        address tokenB,
+        uint24 fee
+    ) external override returns (address pool) {}
+    
+    function enableFeeAmount(uint24 fee, int24 tickSpacing) external override {}
 }
