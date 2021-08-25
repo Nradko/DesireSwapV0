@@ -13,12 +13,13 @@ import "./interfaces/callback/IDesireSwapV0FlashCallback.sol";
 
 contract DesireSwapV0PoolBody is Ticket {
 	uint256 private constant D = 10**18;
+	uint256 private constant DD = 10**36;
 	address public immutable factory;
 	address public immutable token0;
 	address public immutable token1; 
 
-	uint256 public immutable sqrtPositionMultiplier;   // example: 100100000.... is 1.001 (* 10**36)
-	uint256 public immutable feePercentage;            //  0 fee is 0 // 100% fee is 1* 10**36
+	uint256 public immutable sqrtPositionMultiplier;   // example: 100100000.... is 1.001 (* 10**18)
+	uint256 public immutable feePercentage;            //  0 fee is 0 // 100% fee is 1* 10**18
 	uint256 private protocolFeePercentage;
 	uint256 private totalReserve0;
 	uint256 private totalReserve1;
@@ -51,7 +52,7 @@ contract DesireSwapV0PoolBody is Ticket {
 		feePercentage = _feePercentage;
 
 		positions[0].sqrtPriceBottom = _startingSqrtPriceBottom;
-		positions[0].sqrtPriceTop = _startingSqrtPriceBottom*_sqrtPositionMultiplier/10**18;
+		positions[0].sqrtPriceTop = _startingSqrtPriceBottom*_sqrtPositionMultiplier/D;
 		positions[0].activated = true;
 	}
 
@@ -59,8 +60,8 @@ contract DesireSwapV0PoolBody is Ticket {
 	event PositionActivated(int24 index);
 	event InUsePositionChanged(int24 index);
 	event Swap( address msgSender, bool zeroForOne, int256 amount, address to);
-	event Mint(address to, uint256 ticketID, int24 lowestPositionIndex, int24 highestPositionIndex, uint256 positionValue, uint256 amount0, uint256 amount1);
-	event Burn(address owner, uint256 ticketID, int24 lowestPositionIndex, int24 highestPositionIndex, uint256 positionValue, uint256 amount0Transfered, uint256 amount1Transfered);
+	event Mint(address to, uint256 ticketID, int24 lowestPositionIndex, int24 highestPositionIndex, uint256 LiqAdded, uint256 amount0, uint256 amount1);
+	event Burn(address owner, uint256 ticketID, int24 lowestPositionIndex, int24 highestPositionIndex, uint256 LiqRemoved, uint256 amount0Transfered, uint256 amount1Transfered);
 	event CollectFee(address token, uint256 amount);
 	event Flash(address msgSender, address recipient, uint256 amount0, uint256 amount1, uint256 paid0, uint256 paid1);
 
@@ -176,10 +177,10 @@ contract DesireSwapV0PoolBody is Ticket {
 		uint256 amountInHelp = PoolHelper.AmountIn(zeroForOne, h.value00, h.value01, h.value10, h.value11, amountOut); // do not include fees;
         uint256 collectedProtocolFee = 0;
 
-        amountIn = amountInHelp*10**36/(10**36 - feePercentage);
+        amountIn = amountInHelp*D/(D - feePercentage);
         collectedFee = amountIn - amountInHelp;
         if (IDesireSwapV0Factory(factory).protocolFeeIsOn())
-            collectedProtocolFee = (collectedFee * IDesireSwapV0Factory(factory).protocolFeePart())/10**36;
+            collectedProtocolFee = (collectedFee * IDesireSwapV0Factory(factory).protocolFeePart())/D;
         // token0 for token1 // token0 in; token1 out;
         if(zeroForOne) {
             //??
@@ -279,7 +280,7 @@ contract DesireSwapV0PoolBody is Ticket {
         // token0 In, token1 Out, exactTokensForTokens
         else {
             remained = uint256(s.amount);
-            uint256 predictedFee = remained *feePercentage/10**18;
+            uint256 predictedFee = remained *feePercentage/D;
             (h.value00, h.value01, h.value10, h.value11) = getPositionInfo(usingPosition);
             uint256 amountOut = PoolHelper.AmountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained-predictedFee);
             while(amountOut >= (s.zeroForOne? h.value01 : h.value00) &&
@@ -289,7 +290,7 @@ contract DesireSwapV0PoolBody is Ticket {
                 remained -= _swapInPosition(usingPosition, s.to, s.zeroForOne, h.value00);
                 usingPosition = inUsePosition;
                 amountSend += s.zeroForOne ? h.value01 : h.value00;
-                predictedFee = remained *feePercentage/10**18;
+                predictedFee = remained *feePercentage/D;
                 (h.value00, h.value01, h.value10, h.value11) = getPositionInfo(usingPosition); 
                 amountOut = PoolHelper.AmountIn(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained-predictedFee);
             }
@@ -330,34 +331,48 @@ contract DesireSwapV0PoolBody is Ticket {
 	//  It is minted when L is provided.
 	//  It is burned when L is taken.
 
-	function _printOnTicket0(int24 index, uint256 ticketID, uint256 positionValue) private { 
-		if(!positions[index].activated) activate(index);    
+	function _printOnTicket0(int24 index, uint256 ticketID, uint256 LiqToAdd) 
+	private returns(uint256 amount0ToAdd){ 
+		if(!positions[index].activated) activate(index);
+		uint256 reserve0 = positions[index].reserve0;
+		uint256 reserve1 = positions[index].reserve1;
+		uint256 sqrtPriceBottom = positions[index].sqrtPriceBottom;
+		uint256 sqrtPriceTop = positions[index].sqrtPriceTop;
+		
+		amount0ToAdd = reserve0*sqrtPositionMultiplier*sqrtPriceBottom/(sqrtPositionMultiplier -D)/D; 
+		
 		if(positions[index].supplyCoefficient != 0){
-			_ticketSupplyData[ticketID][index] = positions[index].supplyCoefficient*positionValue/positions[index].reserve0;
+			_ticketSupplyData[ticketID][index] = positions[index].supplyCoefficient*amount0ToAdd/reserve0;
 		}
 		else{
 			_ticketSupplyData[ticketID][index] = 
 				PoolHelper.LiqCoefficient(
-					positions[index].reserve0, positions[index].reserve1,
-        			positions[index].sqrtPriceBottom, positions[index].sqrtPriceTop
+					reserve0, reserve1,
+        			sqrtPriceBottom, sqrtPriceTop
 				);
 		}
 		positions[index].supplyCoefficient += _ticketSupplyData[ticketID][index];
 		//!!
-		_modifyPositionReserves(index, positionValue, 0, true, true); 
+		_modifyPositionReserves(index, LiqToAdd, 0, true, true); 
 	}
-	function _printOnTicket1(int24 index, uint256 ticketID, uint256 positionValue)
+	function _printOnTicket1(int24 index, uint256 ticketID, uint256 LiqToAdd)
 	private returns(uint256 amount1ToAdd) { 
 		if(!positions[index].activated) activate(index);
-		amount1ToAdd = positionValue /sqrtPositionMultiplier**2/10**36;
+		uint256 reserve0 = positions[index].reserve0;
+		uint256 reserve1 = positions[index].reserve1;
+		uint256 sqrtPriceBottom = positions[index].sqrtPriceBottom;
+		uint256 sqrtPriceTop = positions[index].sqrtPriceTop;
+
+		amount1ToAdd = LiqToAdd * (sqrtPriceTop - sqrtPriceBottom)/D;
+
 		if(positions[index].supplyCoefficient != 0){
-			_ticketSupplyData[ticketID][index] = positions[index].supplyCoefficient*amount1ToAdd/positions[index].reserve1;
+			_ticketSupplyData[ticketID][index] = positions[index].supplyCoefficient*amount1ToAdd/reserve1;
 		}
 		else{
 			_ticketSupplyData[ticketID][index] = 
 			PoolHelper.LiqCoefficient(
-				positions[index].reserve0, positions[index].reserve1,
-        		positions[index].sqrtPriceBottom, positions[index].sqrtPriceTop
+				reserve0, reserve1,
+        		sqrtPriceBottom, sqrtPriceTop
 			);
 		}
 		positions[index].supplyCoefficient += _ticketSupplyData[ticketID][index];
@@ -369,7 +384,7 @@ contract DesireSwapV0PoolBody is Ticket {
         address to,
         int24 lowestPositionIndex,
         int24 highestPositionIndex,
-        uint256 positionValue,
+        uint256 LiqToAdd,
 		bytes calldata data)
         external
         returns(uint256 amount0, uint256 amount1)
@@ -384,41 +399,47 @@ contract DesireSwapV0PoolBody is Ticket {
         int24 usingPosition = inUsePosition;   
 		_ticketData[ticketID].lowestPositionIndex = lowestPositionIndex;
 		_ticketData[ticketID].highestPositionIndex = highestPositionIndex;
-		_ticketData[ticketID].positionValue = positionValue;
+		_ticketData[ticketID].LiqAdded = LiqToAdd;
 
         if(highestPositionIndex < usingPosition){
 			//in this case positions.reserve1 should be 0
-            amount0 = (uint256(int256(highestPositionIndex - lowestPositionIndex)) + 1) * positionValue;
             for(int24 i = highestPositionIndex; i >= lowestPositionIndex; i--){
-                _printOnTicket0(i, ticketID, positionValue);                
+                amount0 += _printOnTicket0(i, ticketID, LiqToAdd);                
             }
         }
 		else if(lowestPositionIndex > usingPosition)
         {
             // in this case positions.reserve0 should be 0
             for(int24 i = lowestPositionIndex; i <= highestPositionIndex; i++){
-                amount1 +=  _printOnTicket1(i, ticketID, positionValue);
+                amount1 +=  _printOnTicket1(i, ticketID, LiqToAdd);
             }   
         }
 		else
         {
-            amount0 = uint256(int256(highestPositionIndex - inUsePosition)) * positionValue;
-
             for(int24 i = usingPosition - 1; i >= lowestPositionIndex; i--){
-                _printOnTicket0(i, ticketID, positionValue);               
+                amount0 += _printOnTicket0(i, ticketID, LiqToAdd);               
             }
 			
 			for(int24 i = usingPosition + 1; i >= highestPositionIndex; i++){
-				amount1 +=  _printOnTicket1(i, ticketID, positionValue); 
+				amount1 +=  _printOnTicket1(i, ticketID, LiqToAdd); 
             }
 
 
             if(!positions[usingPosition].activated) activate(usingPosition);
-            (h.value00, h.value01, h.value10, h.value11) = getPositionInfo(usingPosition); 
-            uint256 amount0ToAdd = h.balance0 - lastBalance0 - amount0;
-            uint256 amount1ToAdd = h.balance1 - lastBalance1 - amount1;
-			uint256 LiqCoefBefore = PoolHelper.LiqCoefficient(h.value00, h.value01, h.value10, h.value11);
+            (h.value00, h.value01, h.value10, h.value11) = getPositionInfo(usingPosition);
+			uint256 LiqCoefBefore = PoolHelper.LiqCoefficient(h.value00, h.value01, h.value10, h.value11); 
+            uint256 amount0ToAdd;
+			uint256 amount1ToAdd;
+			if(h.value00 == 0 && h.value01 == 0){
+				amount0ToAdd = h.value00*sqrtPositionMultiplier*h.value10/(sqrtPositionMultiplier -D)/D/2;
+				amount1ToAdd = LiqToAdd * (h.value11 - h.value10)/D/2;
+			}
+			else{
+				amount0ToAdd = LiqToAdd/LiqCoefBefore* h.value00;
+            	amount1ToAdd = LiqToAdd/LiqCoefBefore* h.value01;
+			}
 			uint256 LiqCoefAfter = PoolHelper.LiqCoefficient(h.value00 + amount0ToAdd, h.value01 + amount1ToAdd, h.value10, h.value11);
+			require(LiqCoefAfter >= LiqCoefBefore + LiqToAdd, "DesireSwapV0: LIQ_ERROR");
 
 			amount0 += amount0ToAdd;
 			amount1 += amount1ToAdd;
@@ -437,7 +458,7 @@ contract DesireSwapV0PoolBody is Ticket {
 		IDesireSwapV0MintCallback(msg.sender).desireSwapV0MintCallback(amount0, amount1, data);
 		///???
 		require(h.balance0 >= h.lastBalance0 + amount0 && h.balance1 >= h.lastBalance1 + amount1, 'DesireSwapV0: BALANCES_ARE_TOO_LOW');
-	    emit Mint(to, ticketID, lowestPositionIndex, highestPositionIndex, positionValue, amount0, amount1);
+	    emit Mint(to, ticketID, lowestPositionIndex, highestPositionIndex, LiqToAdd, amount0, amount1);
         _updateLastBalances(h.balance0, h.balance1);
 		delete h;
     }
@@ -508,7 +529,7 @@ contract DesireSwapV0PoolBody is Ticket {
 		h.balance1 = balance1();
 		//???
 		require(h.balance0 >= h.lastBalance0 - h.value00 && h.balance1 >= h.lastBalance1 - h.value01, 'DesireSwapV0: BALANCES_ARE_TO0_LOW');
-		emit Burn(owner, ticketID, lowestPositionIndex, highestPositionIndex, _ticketData[ticketID].positionValue, h.value00, h.value01);
+		emit Burn(owner, ticketID, lowestPositionIndex, highestPositionIndex, _ticketData[ticketID].LiqAdded, h.value00, h.value01);
 		//!!!
 		_updateLastBalances(h.balance0, h.balance1);
 		uint256 amount0 = h.value00;
@@ -526,8 +547,8 @@ contract DesireSwapV0PoolBody is Ticket {
         uint256 amount1,
         bytes calldata data
     ) external{
-        uint256 fee0 = amount0*feePercentage/10**18;
-        uint256 fee1 = amount1*feePercentage/10**18;
+        uint256 fee0 = amount0*feePercentage/D;
+        uint256 fee1 = amount1*feePercentage/D;
         uint256 balance0Before = balance0();
         uint256 balance1Before = balance1();
 

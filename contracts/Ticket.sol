@@ -7,7 +7,7 @@ contract Ticket {
     struct TicketData {
         int24 lowestPositionIndex;
         int24 highestPositionIndex;
-        uint256 positionValue;
+        uint256 LiqAdded;
         //mapping (int24 => uint256) positionSupplyCoefficient;
     }
 

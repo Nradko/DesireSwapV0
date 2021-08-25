@@ -65,7 +65,8 @@ library PoolHelper {
 
         return reserve1 - L**2/(reserve1 + L*sqrt0/DD + amountIn)/DD;        
     }
-    /*UNUSED
+
+    /* UNUSED
     function currentPrice(
         uint256 reserve0, uint256 reserve1,
         uint256 sqrt0, uint256 sqrt1)
@@ -73,7 +74,7 @@ library PoolHelper {
         returns (uint256)
     {
         uint256 L = LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
-        return (L*L/(reserve0 + L/sqrt1)**2)*reserve1;
+        return (L*L/(reserve1 + L*sqrt0/DD)**2);
     }
     */
     // returns amount of token0 in that would be in position if all token0 were taken out
