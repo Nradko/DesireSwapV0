@@ -6,8 +6,8 @@ interface IDesireSwapV0Pool {
 	event RangeActivated(int24 index);
 	event InUseRangeChanged(int24 index);
 	event Swap(address msgSender, bool zeroForOne, int256 amount, address to);
-	event Mint(address indexed to, uint256 ticketID, int24 lowestRangeIndex, int24 highestRangeIndex, uint256 positionValue, uint256 amount0, uint256 amount1);
-	event Burn(address indexed owner, uint256 ticketID, int24 lowestRangeIndex, int24 highestRangeIndex, uint256 positionValue, uint256 amount0Transfered, uint256 amount1Transfered);
+	event Mint(address indexed to, uint256 ticketID);
+	event Burn(address indexed owner, uint256 ticketID);
 	event CollectFee(address token, uint256 amount);
 
 	function getLastBalances() 

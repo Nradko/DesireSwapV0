@@ -5,13 +5,14 @@ import "./Ticket.sol";
 import "./library/PoolHelper.sol";
 import "./library/TransferHelper.sol";
 import "./interfaces/IERC20.sol";
-import "./interfaces/IDesireSwapV0Factory.sol"; 	
+import "./interfaces/IDesireSwapV0Factory.sol";
+import "./interfaces/IDesireSwapV0Pool.sol"; 		
 
 import "./interfaces/callback/IDesireSwapV0MintCallback.sol";
 import "./interfaces/callback/IDesireSwapV0SwapCallback.sol";
 import "./interfaces/callback/IDesireSwapV0FlashCallback.sol";
 
-contract DesireSwapV0PoolBody is Ticket {
+contract DesireSwapV0PoolBody is Ticket, IDesireSwapV0Pool {
 	uint256 private constant D = 10**18;
 	uint256 private constant DD = 10**36;
 	address public immutable factory;
@@ -55,16 +56,6 @@ contract DesireSwapV0PoolBody is Ticket {
 		ranges[0].sqrtPriceTop = _startingSqrtPriceBottom*_sqrtRangeMultiplier/D;
 		ranges[0].activated = true;
 	}
-
-	event SwapInRange(address msgSender, int24 index, bool zeroForOne, uint256 amountIn, uint256 amountOut, address to);
-	event RangeActivated(int24 index);
-	event InUseRangeChanged(int24 index);
-	event Swap( address msgSender, bool zeroForOne, int256 amount, address to);
-	event Mint(address to, uint256 ticketID, int24 lowestRangeIndex, int24 highestRangeIndex, uint256 liqAdded, uint256 amount0, uint256 amount1);
-	event Burn(address owner, uint256 ticketID, int24 lowestRangeIndex, int24 highestRangeIndex, uint256 LiqRemoved, uint256 amount0Transfered, uint256 amount1Transfered);
-	event CollectFee(address token, uint256 amount);
-	event Flash(address msgSender, address recipient, uint256 amount0, uint256 amount1, uint256 paid0, uint256 paid1);
-
 
 ///
 /// VIEW FUNCTIONS
@@ -458,7 +449,7 @@ contract DesireSwapV0PoolBody is Ticket {
 		IDesireSwapV0MintCallback(msg.sender).desireSwapV0MintCallback(amount0, amount1, data);
 		///???
 		require(h.balance0 >= h.lastBalance0 + amount0 && h.balance1 >= h.lastBalance1 + amount1, 'DesireSwapV0: BALANCES_ARE_TOO_LOW');
-	    emit Mint(to, ticketID, lowestRangeIndex, highestRangeIndex, liqToAdd, amount0, amount1);
+	    emit Mint(to, ticketID);
         _updateLastBalances(h.balance0, h.balance1);
 		delete h;
     }
@@ -529,7 +520,7 @@ contract DesireSwapV0PoolBody is Ticket {
 		h.balance1 = balance1();
 		//???
 		require(h.balance0 >= h.lastBalance0 - h.value00 && h.balance1 >= h.lastBalance1 - h.value01, 'DesireSwapV0: BALANCES_ARE_TO0_LOW');
-		emit Burn(owner, ticketID, lowestRangeIndex, highestRangeIndex, _ticketData[ticketID].liqAdded, h.value00, h.value01);
+		emit Burn(owner, ticketID);
 		//!!!
 		_updateLastBalances(h.balance0, h.balance1);
 		uint256 amount0 = h.value00;
