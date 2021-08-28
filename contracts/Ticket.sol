@@ -5,9 +5,9 @@ pragma solidity ^0.8.0;
 contract Ticket {
 
     struct TicketData {
-        int24 lowestPositionIndex;
-        int24 highestPositionIndex;
-        uint256 LiqAdded;
+        int24 lowestRangeIndex;
+        int24 highestRangeIndex;
+        uint256 liqAdded;
         //mapping (int24 => uint256) positionSupplyCoefficient;
     }
 

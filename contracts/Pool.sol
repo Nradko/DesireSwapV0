@@ -12,18 +12,18 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	address public immutable token0;
 	address public immutable token1;
 
-	uint256 public immutable sqrtPositionMultiplier;   // example: 100100000.... is 1.001 (* 10**36)
+	uint256 public immutable sqrtRangeMultiplier;   // example: 100100000.... is 1.001 (* 10**36)
 	uint256 public immutable feePercentage;            //  0 fee is 0 // 100% fee is 1* 10**36;
 	uint256 private totalReserve0;
 	uint256 private totalReserve1;
 	uint256 private lastBalance0;
 	uint256 private lastBalance1;
 
-	int24 private inUsePosition;
-	int24 private highestActivatedPosition;
-	int24 private lowestActivatedPosition;
+	int24 private inUseRange;
+	int24 private highestActivatedRange;
+	int24 private lowestActivatedRange;
 
-	struct Position {
+	struct Range {
 		uint256 reserve0;
 		uint256 reserve1;
 		uint256 sqrtPriceBottom;    //  sqrt(lower position bound price) * 10**18 // price of token1 in token0 for 1 token0 i get priceBottom of tokens1
@@ -31,22 +31,22 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 		uint256 supplyCoefficient; 	//
 		bool activated;
 	}
-	mapping(int24 => Position) private positions;
+	mapping(int24 => Range) private ranges;
 
 	constructor(
 		address _factory, address _token0, address _token1,
-		uint256 _sqrtPositionMultiplier, uint256 _feePercentage,
+		uint256 _sqrtRangeMultiplier, uint256 _feePercentage,
 		uint256 _startingSqrtPriceBottom
 	){
 		factory = _factory;
 		token0 = _token0;
 		token1 = _token1;
-		sqrtPositionMultiplier = _sqrtPositionMultiplier;
+		sqrtRangeMultiplier = _sqrtRangeMultiplier;
 		feePercentage = _feePercentage;
 
-		positions[0].sqrtPriceBottom = _startingSqrtPriceBottom;
-		positions[0].sqrtPriceTop = _startingSqrtPriceBottom*_sqrtPositionMultiplier/10**18;
-		positions[0].activated = true;
+		ranges[0].sqrtPriceBottom = _startingSqrtPriceBottom;
+		ranges[0].sqrtPriceTop = _startingSqrtPriceBottom*_sqrtRangeMultiplier/10**18;
+		ranges[0].activated = true;
 	}
 
 	function getLastBalances() external override view returns (uint256 _lastBalance0, uint256 _lastBalance1) {
@@ -59,12 +59,12 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 		_totalReserve1 = totalReserve1;
 	}
 
-	function getPositionInfo(int24 index) external override view
+	function getRangeInfo(int24 index) external override view
 	returns (uint256 _reserve0, uint256 _reserve1, uint256 _sqrtPriceBottom, uint256 _sqrtPriceTop) {
-		_reserve0 = positions[index].reserve0;
-		_reserve1 = positions[index].reserve1;
-		_sqrtPriceBottom = positions[index].sqrtPriceBottom;
-		_sqrtPriceTop = positions[index].sqrtPriceTop;
+		_reserve0 = ranges[index].reserve0;
+		_reserve1 = ranges[index].reserve1;
+		_sqrtPriceBottom = ranges[index].sqrtPriceBottom;
+		_sqrtPriceTop = ranges[index].sqrtPriceTop;
 	}
 
 	function swap(
@@ -83,13 +83,13 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 
 	function mint(
         address to,
-        int24 lowestPositionIndex,
-        int24 highestPositionIndex,
+        int24 lowestRangeIndex,
+        int24 highestRangeIndex,
         uint256 positionValue)
         external override {
 			address body = IDesireSwapV0Factory(factory).body(); 
 			(bool success, bytes memory data) = body.delegatecall(
-            	abi.encodeWithSignature("mint(address to, int24 lowestPositionIndex, int24 highestPositionIndex, uint256 positionValue)", to, lowestPositionIndex, highestPositionIndex, positionValue)
+            	abi.encodeWithSignature("mint(address to, int24 lowestRangeIndex, int24 highestRangeIndex, uint256 positionValue)", to, lowestRangeIndex, highestRangeIndex, positionValue)
         );
 	}
 

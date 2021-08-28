@@ -2,18 +2,18 @@
 pragma solidity ^0.8.0;
 
 interface IDesireSwapV0Pool {
-	event SwapInPosition(address msgSender, int24 index, bool zeroForOne, uint256 amountIn, uint256 amountOut, address to);
-	event PositionActivated(int24 index);
-	event InUsePositionChanged(int24 index);
+	event SwapInRange(address msgSender, int24 index, bool zeroForOne, uint256 amountIn, uint256 amountOut, address to);
+	event RangeActivated(int24 index);
+	event InUseRangeChanged(int24 index);
 	event Swap(address msgSender, bool zeroForOne, int256 amount, address to);
-	event Mint(address to, uint256 ticketID, int24 lowestPositionIndex, int24 highestPositionIndex, uint256 positionValue, uint256 amount0, uint256 amount1);
-	event Burn(address owner, uint256 ticketID, int24 lowestPositionIndex, int24 highestPositionIndex, uint256 positionValue, uint256 amount0Transfered, uint256 amount1Transfered);
+	event Mint(address to, uint256 ticketID, int24 lowestRangeIndex, int24 highestRangeIndex, uint256 positionValue, uint256 amount0, uint256 amount1);
+	event Burn(address owner, uint256 ticketID, int24 lowestRangeIndex, int24 highestRangeIndex, uint256 positionValue, uint256 amount0Transfered, uint256 amount1Transfered);
 	event CollectFee(address token, uint256 amount);
 
 	function getLastBalances() external view returns (uint256 _lastBalance0, uint256 _lastBalance1);
 	function getTotalReserves() external view returns (uint256 _totalReserve0, uint256 _totalReserve1);
 
-	function getPositionInfo(int24 index) external view
+	function getRangeInfo(int24 index) external view
 		returns (uint256 _reserve0, uint256 _reserve1, uint256 _sqrtPriceBottom, uint256 _sqrtPriceTop);
 
 	function swap(
@@ -26,8 +26,8 @@ interface IDesireSwapV0Pool {
 
 	function mint(
         address to,
-        int24 lowestPositionIndex,
-        int24 highestPositionIndex,
+        int24 lowestRangeIndex,
+        int24 highestRangeIndex,
         uint256 positionValue)
         external;
 
