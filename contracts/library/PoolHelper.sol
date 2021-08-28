@@ -77,7 +77,7 @@ library PoolHelper {
         return (L*L/(reserve1 + L*sqrt0/DD)**2);
     }
     */
-    // returns amount of token0 in that would be in position if all token0 were taken out
+    // returns amount of token0 in that would be in range if all token0 were taken out
 
     /* UNUSED
     function inToken0Supply(
@@ -104,7 +104,7 @@ library PoolHelper {
     }
     */
 
-    // returns amount of token1 in that would be in position if all token0 were taken out
+    // returns amount of token1 in that would be in range if all token0 were taken out
     /*UNUSED
     function inToken1Supply(
         uint256 reserve0, uint256 reserve1,

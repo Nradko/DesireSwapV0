@@ -13,7 +13,7 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
     uint256 public override protocolFeePart;
 
     struct poolTypeData{
-        uint256 sqrtPositionMultiplier;
+        uint256 sqrtRangeMultiplier;
         uint256 fee;
     }
     poolTypeData[] poolType;
@@ -35,13 +35,13 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
     }
 
 
-    function addPoolType(uint256 _sqrtPositionMultiplier, uint256 _fee) external override onlyBy(owner) {
+    function addPoolType(uint256 _sqrtRangeMultiplier, uint256 _fee) external override onlyBy(owner) {
         require(feeToPoolTypeNumber[_fee] == 0);
         poolType[poolTypeCount] = poolTypeData({
-            sqrtPositionMultiplier: _sqrtPositionMultiplier,
+            sqrtRangeMultiplier: _sqrtRangeMultiplier,
             fee: _fee
         });
-        emit NewPoolType (poolTypeCount, _sqrtPositionMultiplier, _fee);
+        emit NewPoolType (poolTypeCount, _sqrtRangeMultiplier, _fee);
         poolTypeCount++;
     }
   
@@ -52,7 +52,7 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
         require(token0 != address(0) && token1 != address(0));
         require(poolAddress[token0][token1][_poolTypeNumber] == address(0));
         address pool = address(new DesireSwapV0Pool(address(this), token0, token1,
-		    poolType[_poolTypeNumber].sqrtPositionMultiplier, poolType[_poolTypeNumber].fee,
+		    poolType[_poolTypeNumber].sqrtRangeMultiplier, poolType[_poolTypeNumber].fee,
             _startingSqrtBottomPrice));
         poolAddress[token0][token1][_poolTypeNumber] = pool;
         poolAddress[token1][token0][_poolTypeNumber] = pool;
