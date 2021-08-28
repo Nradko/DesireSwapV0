@@ -215,7 +215,7 @@ contract DesireSwapV0PoolBody is Ticket {
     // amount > 0 amount is exact token inflow, amount < 0 amount is exact token outflow.
     // sqrtPriceLimit is price
 
-	struct swapData{
+	struct swapParams{
 		address to;
         bool zeroForOne;
         int256 amount;
@@ -231,7 +231,7 @@ contract DesireSwapV0PoolBody is Ticket {
         bytes calldata data
     ) external returns (int256, int256)
     {        
-        swapData memory s= swapData({
+        swapParams memory s= swapParams({
 			to: to, zeroForOne: zeroForOne,
 			amount: amount, sqrtPriceLimit: sqrtPriceLimit,
 			data: data

@@ -6,6 +6,7 @@ import "./library/TransferHelper.sol";
 import "./interfaces/IERC20.sol";
 import './interfaces/IDesireSwapV0Factory.sol';
 import './interfaces/IDesireSwapV0Pool.sol';
+import "./PoolBody.sol";
 
 contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	address public immutable factory;
@@ -49,17 +50,22 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 		ranges[0].activated = true;
 	}
 
-	function getLastBalances() external override view returns (uint256 _lastBalance0, uint256 _lastBalance1) {
+	function getLastBalances()
+	external override view
+	returns (uint256 _lastBalance0, uint256 _lastBalance1) {
 		_lastBalance0 = lastBalance0;
 		_lastBalance1 = lastBalance1;
 	}
 
-	function getTotalReserves() external override view returns (uint256 _totalReserve0, uint256 _totalReserve1) {
+	function getTotalReserves() 
+	external override view
+	returns (uint256 _totalReserve0, uint256 _totalReserve1) {
 		_totalReserve0 = totalReserve0;
 		_totalReserve1 = totalReserve1;
 	}
 
-	function getRangeInfo(int24 index) external override view
+	function getRangeInfo(int24 index) 
+	external override view
 	returns (uint256 _reserve0, uint256 _reserve1, uint256 _sqrtPriceBottom, uint256 _sqrtPriceTop) {
 		_reserve0 = ranges[index].reserve0;
 		_reserve1 = ranges[index].reserve1;
@@ -73,46 +79,68 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         int256 amount,
         uint256 sqrtPriceLimit,
         bytes calldata data
-    ) external override returns(int256 amount0, int256 amount1) {
+    	)
+	external override
+	returns(int256 amount0, int256 amount1)
+	{
 		address body = IDesireSwapV0Factory(factory).body(); 
-		(bool success, bytes memory data) = body.delegatecall(
+		(bool success, bytes memory returnedData) = body.delegatecall(
             abi.encodeWithSignature("swap(address to, bool zeroForOne, int256 amount, uint256 sqrtPriceLimit,bytes calldata data)"
 			, to, zeroForOne, amount, sqrtPriceLimit, data)
         );
+		(amount0 ,amount1) = abi.decode(returnedData, (int256, int256));
 	}
 
 	function mint(
         address to,
         int24 lowestRangeIndex,
         int24 highestRangeIndex,
-        uint256 positionValue)
-        external override {
+        uint256 liqToAdd
+		)
+    external override 
+	returns(uint256 amount0, uint256 amount1)
+	{
 			address body = IDesireSwapV0Factory(factory).body(); 
-			(bool success, bytes memory data) = body.delegatecall(
-            	abi.encodeWithSignature("mint(address to, int24 lowestRangeIndex, int24 highestRangeIndex, uint256 positionValue)", to, lowestRangeIndex, highestRangeIndex, positionValue)
+			(bool success, bytes memory returnedData) = body.delegatecall(
+            	abi.encodeWithSignature("mint(address to, int24 lowestRangeIndex, int24 highestRangeIndex, uint256 liqToAdd)", to, lowestRangeIndex, highestRangeIndex, liqToAdd)
         );
+		(amount0 ,amount1) = abi.decode(returnedData, (uint256, uint256));
 	}
 
-	function burn(address to, uint256 ticketID) external override {
+	function burn(
+		address to,
+		uint256 ticketID
+		)
+	external override 
+	returns (uint256 amount0, uint256 amount1)
+	{
 		address body = IDesireSwapV0Factory(factory).body(); 
-		(bool success, bytes memory data) = body.delegatecall(
+		(bool success, bytes memory returnedData) = body.delegatecall(
         	abi.encodeWithSignature("burn(address to, uint256 ticketID)", to, ticketID)
         );
+		(amount0 ,amount1) = abi.decode(returnedData, (uint256, uint256));
 	}
 
 	function flash(
-	address to,
+		address to,
         uint256 amount0,
         uint256 amount1,
         bytes calldata data
-    ) external override{
+    )
+	external override 	
+	{
 		address body = IDesireSwapV0Factory(factory).body(); 
 		(bool success, bytes memory data) = body.delegatecall(
         	abi.encodeWithSignature("flash(address to, uint256 amount0, uint256 amount1, bytes calldata data)",to, amount0, amount1, data)
         );
 	}
 
-	function collectFee(address token, uint256 amount) external override {
+	function collectFee(
+		address token,
+		uint256 amount
+		)
+	external override 
+	{
 		require(msg.sender == IDesireSwapV0Factory(factory).owner());
 		TransferHelper.safeTransfer(token, IDesireSwapV0Factory(factory).feeCollector(), amount);
 		require( IERC20(token0).balanceOf(address(this)) >= totalReserve0

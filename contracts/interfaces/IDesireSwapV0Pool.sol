@@ -10,11 +10,17 @@ interface IDesireSwapV0Pool {
 	event Burn(address owner, uint256 ticketID, int24 lowestRangeIndex, int24 highestRangeIndex, uint256 positionValue, uint256 amount0Transfered, uint256 amount1Transfered);
 	event CollectFee(address token, uint256 amount);
 
-	function getLastBalances() external view returns (uint256 _lastBalance0, uint256 _lastBalance1);
-	function getTotalReserves() external view returns (uint256 _totalReserve0, uint256 _totalReserve1);
+	function getLastBalances() 
+	external view
+	returns (uint256 _lastBalance0, uint256 _lastBalance1);
+	
+	function getTotalReserves()
+	external view 
+	returns (uint256 _totalReserve0, uint256 _totalReserve1);
 
-	function getRangeInfo(int24 index) external view
-		returns (uint256 _reserve0, uint256 _reserve1, uint256 _sqrtPriceBottom, uint256 _sqrtPriceTop);
+	function getRangeInfo(int24 index)
+	external view
+	returns (uint256 _reserve0, uint256 _reserve1, uint256 _sqrtPriceBottom, uint256 _sqrtPriceTop);
 
 	function swap(
         address to,
@@ -22,16 +28,25 @@ interface IDesireSwapV0Pool {
         int256 amount,
         uint256 sqrtPriceLimit,
         bytes calldata data
-    ) external returns(int256 amount0, int256 amount1);
+    )
+	external
+	returns (int256 amount0, int256 amount1);
 
 	function mint(
         address to,
         int24 lowestRangeIndex,
         int24 highestRangeIndex,
-        uint256 positionValue)
-        external;
+        uint256 positionValue
+		)
+    external
+	returns (uint256 amount0, uint256 amount1);
 
-	function burn(address to, uint256 ticketID) external;
+	function burn(
+		address to,
+		uint256 ticketID
+		)
+	external
+	returns (uint256 amount0, uint256 amount1);
 
 	function flash(
 	address to,
