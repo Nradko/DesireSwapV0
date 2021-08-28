@@ -1,17 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
-
 pragma solidity ^0.8.0;
 
-contract Ticket {
+import "./interfaces/ITicket.sol";
 
-    struct TicketData {
-        int24 lowestRangeIndex;
-        int24 highestRangeIndex;
-        uint256 liqAdded;
-    }
+contract Ticket is ITicket{
+
+    // struct TicketData can be found in ITicket
+    
     // Mapping from token Id to positionSupplyCoefficient
     mapping (uint256 => mapping(int24 => uint256)) internal _ticketSupplyData;
-
 
     // Mapping from token ID to owner address
     mapping (uint256 => address) private _owners;
@@ -29,19 +26,19 @@ contract Ticket {
         nextId = 1;
     }
 
-    function getTicketOwner(uint256 ticketId) external view
+    function getTicketOwner(uint256 ticketId) external view override
     returns(address)
     {
         return _owners[ticketId];
     }
 
-    function getBalance(address owner) external view
+    function getBalance(address owner) external view override
     returns(uint256)
     {
         return _balances[owner];
     }
 
-    function findOwnedTickets(address owner, uint256 number) external view
+    function findOwnedTickets(address owner, uint256 number) external view override
     returns (uint256)
     {
         require (number <= _balances[owner],"DSV0Tick(findOwnedTickets): number>_balances[owner]");
@@ -53,18 +50,18 @@ contract Ticket {
         }
     }
 
-    function getTicketData(uint256 ticketId) external view
+    function getTicketData(uint256 ticketId) external view override
     returns(TicketData memory)
     {
         return _ticketData[ticketId];
     }
 
-    function numberOf(address owner) external view returns (uint256) {
+    function numberOf(address owner) external view override returns (uint256) {
         require(owner != address(0), "ERC721: ZERO_ADDRESS");
         return _balances[owner];
     }
 
-    function ownerOf(uint256 tokenId) public view returns (address) {
+    function ownerOf(uint256 tokenId) internal view returns (address) {
         address owner = _owners[tokenId];
         require(owner != address(0), "ERC721: TOKEN_DOES_NOT_EXIST");
         return owner;
