@@ -10,6 +10,8 @@ import './interfaces/IDesireSwapV0Factory.sol';
 import './interfaces/IDesireSwapV0Pool.sol';
 
 contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool, IUniswapV3Pool {
+	uint256 private constant DEFAULT_SQRT_POSITION_MULTIPLIER = 1;	// to be established
+
 	address public override immutable factory;
 	address public override immutable token0;
 	address public override immutable token1;
@@ -20,7 +22,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool, IUniswapV3Pool {
 	uint128 public override maxLiquidityPerTick;
 
 	uint256 public immutable sqrtPositionMultiplier;   // example: 100100000.... is 1.001 (* 10**36)
-	uint256 public immutable feePercentage;            //  0 fee is 0 // 100% fee is 1* 10**36;
+	uint24 public immutable feePercentage;            //  0 fee is 0 // 100% fee is 1* 10**36;
 	uint256 private totalReserve0;
 	uint256 private totalReserve1;
 	uint256 private lastBalance0;
@@ -42,18 +44,23 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool, IUniswapV3Pool {
 
 	constructor(
 		address _factory, address _token0, address _token1,
-		uint256 _sqrtPositionMultiplier, uint256 _feePercentage,
-		uint256 _startingSqrtPriceBottom
+		uint24 _feePercentage
 	){
 		factory = _factory;
 		token0 = _token0;
 		token1 = _token1;
-		sqrtPositionMultiplier = _sqrtPositionMultiplier;
 		feePercentage = _feePercentage;
+	}
 
+	function initialize(uint256 _startingSqrtPriceBottom, uint256 _sqrtPositionMultiplier) public {
+		sqrtPositionMultiplier = _sqrtPositionMultiplier;
 		positions[0].sqrtPriceBottom = _startingSqrtPriceBottom;
 		positions[0].sqrtPriceTop = _startingSqrtPriceBottom*_sqrtPositionMultiplier/10**18;
 		positions[0].activated = true;
+	}
+	
+	function initialize(uint160 sqrtPriceX96) external override {
+		initialize(uint256(sqrtPriceX96), DEFAULT_SQRT_POSITION_MULTIPLIER);
 	}
 
 	function getLastBalances() external override view returns (uint256 _lastBalance0, uint256 _lastBalance1) {
