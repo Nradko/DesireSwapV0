@@ -9,14 +9,14 @@ interface ITicket
         uint256 liqAdded;
     }
 
+    function getNextId() external view
+    returns(uint256);
+
     function getTicketOwner(uint256 ticketId) external view
     returns(address);
 
     function getBalance(address owner) external view
     returns(uint256);
-
-    function findOwnedTickets(address owner, uint256 number) external view
-    returns (uint256);
 
     function getTicketData(uint256 ticketId) external view
     returns(TicketData memory);

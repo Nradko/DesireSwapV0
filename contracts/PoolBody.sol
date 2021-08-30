@@ -34,7 +34,7 @@ contract DesireSwapV0PoolBody is Ticket, IDesireSwapV0Pool {
 	struct Range {
 		uint256 reserve0;
 		uint256 reserve1;
-		uint256 sqrtPriceBottom;    //  sqrt(lower position bound price) * 10**18 // price of token1 in token0 for 1 token0 i get priceBottom of tokens1
+		uint256 sqrtPriceBottom;    //  sqrt(lower position bound price) * 10**18 // price of token0 in token1 for 1 token1 i get priceBottom of tokens0
 		uint256 sqrtPriceTop;
 		uint256 supplyCoefficient; 	//
 		bool activated;
@@ -95,12 +95,12 @@ contract DesireSwapV0PoolBody is Ticket, IDesireSwapV0Pool {
 		totalReserve0 = add0 ? totalReserve0 + toAdd0: totalReserve0 - toAdd0;
 		totalReserve1 = add1 ? totalReserve1 + toAdd0: totalReserve1 - toAdd1;
         if(ranges[index].reserve0 == 0 && ranges[index-1].activated) {
-            inUseRange--;
-            emit InUseRangeChanged(index-1);
-        }
-		if(ranges[index].reserve1 == 0 && ranges[index+1].activated) {
             inUseRange++;
             emit InUseRangeChanged(index+1);
+        }
+		if(ranges[index].reserve1 == 0 && ranges[index+1].activated) {
+            inUseRange--;
+            emit InUseRangeChanged(index-1);
         }
 	}
 ///
@@ -322,7 +322,7 @@ contract DesireSwapV0PoolBody is Ticket, IDesireSwapV0Pool {
 	//  It is minted when L is provided.
 	//  It is burned when L is taken.
 
-	function _printOnTicket0(int24 index, uint256 ticketID, uint256 liqToAdd) 
+	function _printOnTicket0(int24 index, uint256 ticketId, uint256 liqToAdd) 
 	private returns(uint256 amount0ToAdd){ 
 		if(!ranges[index].activated) activate(index);
 		uint256 reserve0 = ranges[index].reserve0;
@@ -333,20 +333,20 @@ contract DesireSwapV0PoolBody is Ticket, IDesireSwapV0Pool {
 		amount0ToAdd = reserve0*sqrtRangeMultiplier*sqrtPriceBottom/(sqrtRangeMultiplier -D)/D; 
 		
 		if(ranges[index].supplyCoefficient != 0){
-			_ticketSupplyData[ticketID][index] = ranges[index].supplyCoefficient*amount0ToAdd/reserve0;
+			_ticketSupplyData[ticketId][index] = ranges[index].supplyCoefficient*amount0ToAdd/reserve0;
 		}
 		else{
-			_ticketSupplyData[ticketID][index] = 
+			_ticketSupplyData[ticketId][index] = 
 				PoolHelper.LiqCoefficient(
 					reserve0, reserve1,
         			sqrtPriceBottom, sqrtPriceTop
 				);
 		}
-		ranges[index].supplyCoefficient += _ticketSupplyData[ticketID][index];
+		ranges[index].supplyCoefficient += _ticketSupplyData[ticketId][index];
 		//!!
 		_modifyRangeReserves(index, liqToAdd, 0, true, true); 
 	}
-	function _printOnTicket1(int24 index, uint256 ticketID, uint256 liqToAdd)
+	function _printOnTicket1(int24 index, uint256 ticketId, uint256 liqToAdd)
 	private returns(uint256 amount1ToAdd) { 
 		if(!ranges[index].activated) activate(index);
 		uint256 reserve0 = ranges[index].reserve0;
@@ -357,16 +357,16 @@ contract DesireSwapV0PoolBody is Ticket, IDesireSwapV0Pool {
 		amount1ToAdd = liqToAdd * (sqrtPriceTop - sqrtPriceBottom)/D;
 
 		if(ranges[index].supplyCoefficient != 0){
-			_ticketSupplyData[ticketID][index] = ranges[index].supplyCoefficient*amount1ToAdd/reserve1;
+			_ticketSupplyData[ticketId][index] = ranges[index].supplyCoefficient*amount1ToAdd/reserve1;
 		}
 		else{
-			_ticketSupplyData[ticketID][index] = 
+			_ticketSupplyData[ticketId][index] = 
 			PoolHelper.LiqCoefficient(
 				reserve0, reserve1,
         		sqrtPriceBottom, sqrtPriceTop
 			);
 		}
-		ranges[index].supplyCoefficient += _ticketSupplyData[ticketID][index];
+		ranges[index].supplyCoefficient += _ticketSupplyData[ticketId][index];
 		//!!
 		_modifyRangeReserves(index, 0, amount1ToAdd, true, true); 
 	}
@@ -386,33 +386,33 @@ contract DesireSwapV0PoolBody is Ticket, IDesireSwapV0Pool {
 			balance0: balance0(), balance1: balance1(),
 			value00: 0, value01: 0,
 			value10: 0, value11: 0});
-		uint256 ticketID = _mint(to);
+		uint256 ticketId = _mint(to);
         int24 usingRange = inUseRange;   
-		_ticketData[ticketID].lowestRangeIndex = lowestRangeIndex;
-		_ticketData[ticketID].highestRangeIndex = highestRangeIndex;
-		_ticketData[ticketID].liqAdded = liqToAdd;
+		_ticketData[ticketId].lowestRangeIndex = lowestRangeIndex;
+		_ticketData[ticketId].highestRangeIndex = highestRangeIndex;
+		_ticketData[ticketId].liqAdded = liqToAdd;
 
         if(highestRangeIndex < usingRange){
 			//in this case ranges.reserve1 should be 0
             for(int24 i = highestRangeIndex; i >= lowestRangeIndex; i--){
-                amount0 += _printOnTicket0(i, ticketID, liqToAdd);                
+                amount0 += _printOnTicket0(i, ticketId, liqToAdd);                
             }
         }
 		else if(lowestRangeIndex > usingRange)
         {
             // in this case ranges.reserve0 should be 0
             for(int24 i = lowestRangeIndex; i <= highestRangeIndex; i++){
-                amount1 +=  _printOnTicket1(i, ticketID, liqToAdd);
+                amount1 +=  _printOnTicket1(i, ticketId, liqToAdd);
             }   
         }
 		else
         {
             for(int24 i = usingRange - 1; i >= lowestRangeIndex; i--){
-                amount0 += _printOnTicket0(i, ticketID, liqToAdd);               
+                amount0 += _printOnTicket0(i, ticketId, liqToAdd);               
             }
 			
 			for(int24 i = usingRange + 1; i >= highestRangeIndex; i++){
-				amount1 +=  _printOnTicket1(i, ticketID, liqToAdd); 
+				amount1 +=  _printOnTicket1(i, ticketId, liqToAdd); 
             }
 
 
@@ -422,7 +422,7 @@ contract DesireSwapV0PoolBody is Ticket, IDesireSwapV0Pool {
             uint256 amount0ToAdd;
 			uint256 amount1ToAdd;
 			if(h.value00 == 0 && h.value01 == 0){
-				amount0ToAdd = h.value00*sqrtRangeMultiplier*h.value10/(sqrtRangeMultiplier -D)/D/2;
+				amount0ToAdd = liqToAdd * ()/2;
 				amount1ToAdd = liqToAdd * (h.value11 - h.value10)/D/2;
 			}
 			else{
@@ -436,20 +436,20 @@ contract DesireSwapV0PoolBody is Ticket, IDesireSwapV0Pool {
 			amount1 += amount1ToAdd;
 
             if(ranges[usingRange].supplyCoefficient != 0){
-				_ticketSupplyData[ticketID][usingRange] = ranges[usingRange].supplyCoefficient * (LiqCoefAfter - LiqCoefBefore)/LiqCoefBefore;             
+				_ticketSupplyData[ticketId][usingRange] = ranges[usingRange].supplyCoefficient * (LiqCoefAfter - LiqCoefBefore)/LiqCoefBefore;             
             } else 
             {
-                _ticketSupplyData[ticketID][usingRange] = LiqCoefAfter;                
+                _ticketSupplyData[ticketId][usingRange] = LiqCoefAfter;                
             }
             //!!
-			ranges[usingRange].supplyCoefficient += _ticketSupplyData[ticketID][usingRange];
+			ranges[usingRange].supplyCoefficient += _ticketSupplyData[ticketId][usingRange];
 			//!!
             _modifyRangeReserves(usingRange, amount0ToAdd, amount1ToAdd, true ,true); 
         }
 		IDesireSwapV0MintCallback(msg.sender).desireSwapV0MintCallback(amount0, amount1, data);
 		///???
 		require(h.balance0 >= h.lastBalance0 + amount0 && h.balance1 >= h.lastBalance1 + amount1, 'DesireSwapV0: BALANCES_ARE_TOO_LOW');
-	    emit Mint(to, ticketID);
+	    emit Mint(to, ticketId);
         _updateLastBalances(h.balance0, h.balance1);
 		delete h;
     }
@@ -458,9 +458,9 @@ contract DesireSwapV0PoolBody is Ticket, IDesireSwapV0Pool {
 ///	REDEEM LIQ
 ///
 	// zeroOrOne 0=false if only token0 in reserves, 1=true if only token 1 in reserves.
-	function _readTicket(int24 index, uint256 ticketID, bool zeroOrOne)
+	function _readTicket(int24 index, uint256 ticketId, bool zeroOrOne)
 	private returns(uint256 amountToTransfer){
-		uint256 supply = _ticketSupplyData[ticketID][index];
+		uint256 supply = _ticketSupplyData[ticketId][index];
 		if(zeroOrOne){
 			amountToTransfer = supply*ranges[index].reserve0/ranges[index].supplyCoefficient;
 			//!!
@@ -474,38 +474,38 @@ contract DesireSwapV0PoolBody is Ticket, IDesireSwapV0Pool {
 		ranges[index].supplyCoefficient -= supply;
 	}
 
-	function burn(address to, uint256 ticketID) external
+	function burn(address to, uint256 ticketId) external
 		returns (uint256, uint256) {
-		require(_exists(ticketID), 'DesireSwapV0: TOKEN_DOES_NOT_EXISTS');
-		address owner = Ticket.ownerOf(ticketID);
+		require(_exists(ticketId), 'DesireSwapV0: TOKEN_DOES_NOT_EXISTS');
+		address owner = Ticket.ownerOf(ticketId);
 		require(tx.origin == owner,'DesireSwapV0: SENDER_IS_NOT_THE_OWNER');
-		_burn(ticketID);
+		_burn(ticketId);
 
 		helpData memory h;
 		h.lastBalance0 = lastBalance0;
 		h.lastBalance1 = lastBalance1;
 		int24 usingRange = inUseRange;
 			
-		int24 highestRangeIndex = _ticketData[ticketID].highestRangeIndex;
-		int24 lowestRangeIndex = _ticketData[ticketID].lowestRangeIndex;
+		int24 highestRangeIndex = _ticketData[ticketId].highestRangeIndex;
+		int24 lowestRangeIndex = _ticketData[ticketId].lowestRangeIndex;
 		if(highestRangeIndex < usingRange){
 			for(int24 i = highestRangeIndex; i >= highestRangeIndex; i--){
-				h.value00 += _readTicket(i, ticketID, false);
+				h.value00 += _readTicket(i, ticketId, false);
 			}
 		} else if(lowestRangeIndex > usingRange){
 			for(int24 i = lowestRangeIndex; i <= highestRangeIndex; i++){
-				h.value01 += _readTicket(i, ticketID, true);
+				h.value01 += _readTicket(i, ticketId, true);
 			}
 		} else
 		{
 			for(int24 i = highestRangeIndex; i > usingRange; i--){
-				h.value00 += _readTicket(i, ticketID, false);
+				h.value00 += _readTicket(i, ticketId, false);
 			}
 			for(int24 i = lowestRangeIndex; i < usingRange; i++){
-				h.value01 += _readTicket(i, ticketID, true);
+				h.value01 += _readTicket(i, ticketId, true);
 			}
 				
-			uint256 supply = _ticketSupplyData[ticketID][usingRange];
+			uint256 supply = _ticketSupplyData[ticketId][usingRange];
 			h.value10 = supply*ranges[usingRange].reserve0/ranges[usingRange].supplyCoefficient;
 			h.value11 = supply*ranges[usingRange].reserve1/ranges[usingRange].supplyCoefficient;
 			h.value00 += h.value10;
@@ -520,7 +520,7 @@ contract DesireSwapV0PoolBody is Ticket, IDesireSwapV0Pool {
 		h.balance1 = balance1();
 		//???
 		require(h.balance0 >= h.lastBalance0 - h.value00 && h.balance1 >= h.lastBalance1 - h.value01, 'DesireSwapV0: BALANCES_ARE_TO0_LOW');
-		emit Burn(owner, ticketID);
+		emit Burn(owner, ticketId);
 		//!!!
 		_updateLastBalances(h.balance0, h.balance1);
 		uint256 amount0 = h.value00;

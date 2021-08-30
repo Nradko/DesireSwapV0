@@ -26,6 +26,12 @@ contract Ticket is ITicket{
         nextId = 1;
     }
 
+    function getNextid() external view
+    returns(uint256)
+    {
+        returns nextId;
+    }
+
     function getTicketOwner(uint256 ticketId) external view override
     returns(address)
     {
@@ -36,18 +42,6 @@ contract Ticket is ITicket{
     returns(uint256)
     {
         return _balances[owner];
-    }
-
-    function findOwnedTickets(address owner, uint256 number) external view override
-    returns (uint256)
-    {
-        require (number <= _balances[owner],"DSV0Tick(findOwnedTickets): number>_balances[owner]");
-        uint j = 1;
-        for( uint i = 1; i < nextId; i++){
-            if (_owners[i] == owner){
-                if(number == j++) return i;
-            }
-        }
     }
 
     function getTicketData(uint256 ticketId) external view override

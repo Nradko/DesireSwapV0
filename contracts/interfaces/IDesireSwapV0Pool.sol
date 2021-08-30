@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-interface IDesireSwapV0Pool {
+import "./ITicket.sol";
+
+interface IDesireSwapV0Pool is ITicket {
 	event SwapInRange(address msgSender, int24 index, bool zeroForOne, uint256 amountIn, uint256 amountOut, address to);
 	event RangeActivated(int24 index);
 	event InUseRangeChanged(int24 index);
