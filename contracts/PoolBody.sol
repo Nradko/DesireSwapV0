@@ -464,6 +464,7 @@ contract DesireSwapV0PoolBody is
 	function _readTicket(int24 index, uint256 ticketId, bool zeroOrOne)
 	private returns(uint256 amountToTransfer){
 		uint256 supply = _ticketSupplyData[ticketId][index];
+		_ticketSupplyData[ticketId][index] = 0;
 		if(zeroOrOne){
 			amountToTransfer = supply*ranges[index].reserve0/ranges[index].supplyCoefficient;
 			//!!
@@ -509,6 +510,7 @@ contract DesireSwapV0PoolBody is
 			}
 				
 			uint256 supply = _ticketSupplyData[ticketId][usingRange];
+			_ticketSupplyData[ticketId][usingRange] = 0;
 			h.value10 = supply*ranges[usingRange].reserve0/ranges[usingRange].supplyCoefficient;
 			h.value11 = supply*ranges[usingRange].reserve1/ranges[usingRange].supplyCoefficient;
 			h.value00 += h.value10;

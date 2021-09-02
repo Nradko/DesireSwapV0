@@ -55,14 +55,14 @@ contract Ticket is ITicket{
         return _balances[owner];
     }
 
-    function ownerOf(uint256 tokenId) internal view returns (address) {
-        address owner = _owners[tokenId];
+    function ownerOf(uint256 ticketId) internal view returns (address) {
+        address owner = _owners[ticketId];
         require(owner != address(0), "ERC721: TOKEN_DOES_NOT_EXIST");
         return owner;
     }
 
-    function _exists(uint256 tokenId) internal view returns (bool) {
-        return _owners[tokenId] != address(0);
+    function _exists(uint256 ticketId) internal view returns (bool) {
+        return _owners[ticketId] != address(0);
     }
 
     function _mint(address to) internal returns (uint256) {
@@ -73,9 +73,10 @@ contract Ticket is ITicket{
         return (nextId++);
     }
 
-    function _burn(uint256 tokenId) internal {
-        address owner = ownerOf(tokenId);
+    function _burn(uint256 ticketId) internal {
+        address owner = ownerOf(ticketId);
         _balances[owner] -= 1;
-        _owners[tokenId] = address(0);
+        _owners[ticketId] = address(0);
+        delete _ticketData[ticketId];
     }
 }
