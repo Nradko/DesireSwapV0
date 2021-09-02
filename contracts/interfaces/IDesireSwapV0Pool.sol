@@ -2,15 +2,16 @@
 pragma solidity ^0.8.0;
 
 import "./ITicket.sol";
+import "./IDesireSwapV0PoolEvents.sol";
 
-interface IDesireSwapV0Pool is ITicket {
-	event SwapInRange(address msgSender, int24 index, bool zeroForOne, uint256 amountIn, uint256 amountOut, address to);
-	event RangeActivated(int24 index);
-	event InUseRangeChanged(int24 index);
-	event Swap(address msgSender, bool zeroForOne, int256 amount, address to);
-	event Mint(address indexed to, uint256 ticketID);
-	event Burn(address indexed owner, uint256 ticketID);
-	event CollectFee(address token, uint256 amount);
+interface IDesireSwapV0Pool is 
+	ITicket,
+	IDesireSwapV0PoolEvents	
+{
+
+
+	function initialize(uint256 _startingSqrtPriceBottom)
+	external;
 
 	function getLastBalances() 
 	external view

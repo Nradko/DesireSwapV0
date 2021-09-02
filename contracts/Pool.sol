@@ -10,6 +10,7 @@ import './interfaces/IDesireSwapV0Pool.sol';
 import "./PoolBody.sol";
 
 contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
+	bool initialized;
 	address public immutable factory;
 	address public immutable token0;
 	address public immutable token1;
@@ -37,18 +38,24 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 
 	constructor(
 		address _factory, address _token0, address _token1,
-		uint256 _sqrtRangeMultiplier, uint256 _feePercentage,
-		uint256 _startingSqrtPriceBottom
+		uint256 _feePercentage, uint256 _sqrtRangeMultiplier
 	){
+		initialized = false;
 		factory = _factory;
 		token0 = _token0;
 		token1 = _token1;
 		sqrtRangeMultiplier = _sqrtRangeMultiplier;
 		feePercentage = _feePercentage;
+	}
 
+	function initialize(uint256 _startingSqrtPriceBottom)
+	external override 
+	{
+		require(initialized == false, "DesireSwapV0Pool: IS_ALREADY_INITIALIZED");
 		ranges[0].sqrtPriceBottom = _startingSqrtPriceBottom;
-		ranges[0].sqrtPriceTop = _startingSqrtPriceBottom*_sqrtRangeMultiplier/10**18;
+		ranges[0].sqrtPriceTop = _startingSqrtPriceBottom*sqrtRangeMultiplier/10**18;
 		ranges[0].activated = true;
+		initialized = true;
 	}
 
 	function getLastBalances()
@@ -99,12 +106,13 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         uint256 liqToAdd,
 		bytes calldata data
 		)
-    external override 
+    external override
 	returns(uint256 amount0, uint256 amount1)
 	{
-			address body = IDesireSwapV0Factory(factory).body(); 
-			(bool success, bytes memory returnedData) = body.delegatecall(
-            	abi.encodeWithSignature("mint(address to, int24 lowestRangeIndex, int24 highestRangeIndex, uint256 liqToAdd, bytes calldata data)", to, lowestRangeIndex, highestRangeIndex, liqToAdd, data)
+		require(initialized == true, "DesireSwapV0Pool: NOT_INITIALIZED_YET");
+		address body = IDesireSwapV0Factory(factory).body(); 
+		(bool success, bytes memory returnedData) = body.delegatecall(
+        	abi.encodeWithSignature("mint(address to, int24 lowestRangeIndex, int24 highestRangeIndex, uint256 liqToAdd, bytes calldata data)", to, lowestRangeIndex, highestRangeIndex, liqToAdd, data)
         );
 		(amount0 ,amount1) = abi.decode(returnedData, (uint256, uint256));
 	}

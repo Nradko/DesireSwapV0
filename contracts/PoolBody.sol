@@ -5,14 +5,17 @@ import "./Ticket.sol";
 import "./library/PoolHelper.sol";
 import "./library/TransferHelper.sol";
 import "./interfaces/IERC20.sol";
-import "./interfaces/IDesireSwapV0Factory.sol";
-import "./interfaces/IDesireSwapV0Pool.sol"; 		
+import "./interfaces/IDesireSwapV0Factory.sol"; 
+import "./interfaces/IDesireSwapV0PoolEvents.sol"; 		
 
 import "./interfaces/callback/IDesireSwapV0MintCallback.sol";
 import "./interfaces/callback/IDesireSwapV0SwapCallback.sol";
 import "./interfaces/callback/IDesireSwapV0FlashCallback.sol";
 
-contract DesireSwapV0PoolBody is Ticket, IDesireSwapV0Pool {
+contract DesireSwapV0PoolBody is 
+	Ticket,
+	IDesireSwapV0PoolEvents	
+{
 	uint256 private constant D = 10**18;
 	uint256 private constant DD = 10**36;
 	address public immutable factory;
@@ -422,7 +425,7 @@ contract DesireSwapV0PoolBody is Ticket, IDesireSwapV0Pool {
             uint256 amount0ToAdd;
 			uint256 amount1ToAdd;
 			if(h.value00 == 0 && h.value01 == 0){
-				amount0ToAdd = liqToAdd * ()/2;
+				amount0ToAdd = liqToAdd * (h.value10*h.value11/(h.value11-h.value10))/2;
 				amount1ToAdd = liqToAdd * (h.value11 - h.value10)/D/2;
 			}
 			else{

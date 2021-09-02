@@ -26,10 +26,10 @@ contract Ticket is ITicket{
         nextId = 1;
     }
 
-    function getNextid() external view
+    function getNextId() external view override
     returns(uint256)
     {
-        returns nextId;
+        return nextId;
     }
 
     function getTicketOwner(uint256 ticketId) external view override
