@@ -32,8 +32,8 @@ library PoolHelper {
         returns (uint256)
     {
         //sqrtprice is 10**18*sqrt_real_price
-        uint256 b = x*sqrt0 + y*DD/sqrt1;
-        return (b + sqrt(b^2 + 4*(DD-(sqrt0*DD)/sqrt1)*x*y))*D/(2*(D-(sqrt0*D)/sqrt1));
+        uint256 b = x*sqrt0 + y*DD/sqrt1; // dimension D
+        return (b + sqrt(b^2 + 4*(DD-(sqrt0*DD)/sqrt1)*x*y))/(2*(1-(sqrt0)/sqrt1)); //dimension D
     }
 
     function AmountIn(
@@ -44,11 +44,11 @@ library PoolHelper {
         internal pure
         returns(uint256)
     {
-        uint256 L = LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
+        uint256 L = LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1); //dim = D
         if(zeroForOne) 
-            return L**2/(reserve1 + L*sqrt0/DD - amountOut) - reserve0;
+            return L**2/(reserve1*DD + L*sqrt0 - amountOut*DD) - reserve0; //dim = 0
         
-        return L**2/(reserve0 + L/sqrt1 - amountOut) - reserve1;
+        return L**2/(reserve0 + L/sqrt1 - amountOut)/DD - reserve1;     // dim = 0
     }
 
     function AmountOut(
@@ -59,11 +59,11 @@ library PoolHelper {
         internal pure
         returns(uint256)
     {
-        uint256 L = LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
+        uint256 L = LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1); //dim = D
         if (zeroForOne)
-            return reserve1 - L**2/(reserve0 + L/sqrt1 + amountIn)/DD;
+            return reserve1 - L**2/(reserve0 + L/sqrt1 + amountIn)/DD; //dim = 0
 
-        return reserve1 - L**2/(reserve1 + L*sqrt0/DD + amountIn)/DD;        
+        return reserve1 - L**2/(reserve1*DD + L*sqrt0 + amountIn*DD);  //dim = 0
     }
 
     /* UNUSED

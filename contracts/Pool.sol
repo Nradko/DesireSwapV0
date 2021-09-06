@@ -10,7 +10,7 @@ import './interfaces/IDesireSwapV0Pool.sol';
 import "./PoolBody.sol";
 
 contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
-	bool initialized;
+	bool public initialized;
 	address public immutable factory;
 	address public immutable token0;
 	address public immutable token1;

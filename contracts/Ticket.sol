@@ -38,12 +38,6 @@ contract Ticket is ITicket{
         return _owners[ticketId];
     }
 
-    function getBalance(address owner) external view override
-    returns(uint256)
-    {
-        return _balances[owner];
-    }
-
     function getTicketData(uint256 ticketId) external view override
     returns(TicketData memory)
     {
