@@ -20,7 +20,6 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	uint256 private constant DD = 10**36;
 	uint256 public protocolFeePart = 0.2 * 10**18;
 	address public immutable factory;
-	address public immutable body;
 	address public immutable token0;
 	address public immutable token1;
 
@@ -47,13 +46,12 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	mapping(int24 => Range) private ranges;
 
 	constructor(
-		address _factory, address _body,
+		address _factory,
 		address _token0, address _token1,
 		uint256 _feePercentage, uint256 _sqrtRangeMultiplier
 	){
 		initialized = false;
 		factory = _factory;
-		body = _body;
 		token0 = _token0;
 		token1 = _token1;
 		sqrtRangeMultiplier = _sqrtRangeMultiplier;

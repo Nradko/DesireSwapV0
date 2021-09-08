@@ -7,7 +7,6 @@ import"./interfaces/IDesireSwapV0Factory.sol";
 contract DesireSwapV0Factory is IDesireSwapV0Factory {
     address public override owner;
     address public override feeCollector;
-    address public immutable override body;
 
     mapping(uint256 => uint256) public override feeToSqrtRangeMultiplier;
     mapping(address => mapping(address => mapping(uint256 => address))) public override poolAddress;
@@ -20,11 +19,10 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
         _;
     }
 
-    constructor(address _owner, address _body){
+    constructor(address _owner){
         owner = _owner;
         feeCollector = _owner;
         emit OwnerChanged(address(0), _owner);
-        body = _body;
         poolList.push(address(0));
     }
 
@@ -42,7 +40,7 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
         require(token0 != address(0) && token1 != address(0));
         require(poolAddress[token0][token1][_fee] == address(0));
         address pool = address(new DesireSwapV0Pool(
-            address(this), body, token0, token1,
+            address(this), token0, token1,
 		    _fee, feeToSqrtRangeMultiplier[_fee]
             ));
         poolAddress[token0][token1][_fee] = pool;

@@ -9,7 +9,6 @@ interface IDesireSwapV0Factory {
 
 	function owner() external view returns (address _owner);
 	function feeCollector() external view returns (address _feeCollector);
-	function body() external view returns (address _body);
 	function feeToSqrtRangeMultiplier(uint256 fee) external view returns(uint256);
 	function poolAddress(address, address, uint256) external view returns(address);
 	function poolList(uint256) external view returns(address);
