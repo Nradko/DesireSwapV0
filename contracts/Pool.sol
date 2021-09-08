@@ -14,26 +14,22 @@ import "./interfaces/callback/IDesireSwapV0SwapCallback.sol";
 import "./interfaces/callback/IDesireSwapV0FlashCallback.sol";
 
 contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
-	bool public initialized;
-	bool public protocolFeeIsOn;
+	bool public override initialized;
+	bool public override protocolFeeIsOn;
+
+	address public immutable override factory;
+	address public immutable override token0;
+	address public immutable override token1;
+
 	uint256 private constant D = 10**18;
 	uint256 private constant DD = 10**36;
+	uint256 public immutable override sqrtRangeMultiplier;   // example: 100100000.... is 1.001 (* 10**36)
+	uint256 public immutable override feePercentage;            //  0 fee is 0 // 100% fee is 1* 10**36;
 	uint256 public protocolFeePart = 0.2 * 10**18;
-	address public immutable factory;
-	address public immutable token0;
-	address public immutable token1;
-
-	uint256 public immutable sqrtRangeMultiplier;   // example: 100100000.... is 1.001 (* 10**36)
-	uint256 public immutable feePercentage;            //  0 fee is 0 // 100% fee is 1* 10**36;
 	uint256 private totalReserve0;
 	uint256 private totalReserve1;
 	uint256 private lastBalance0;
 	uint256 private lastBalance1;
-
-	int24 private inUseRange;
-	int24 private highestActivatedRange;
-	int24 private lowestActivatedRange;
-
 
 	struct Range {
 		uint256 reserve0;
@@ -43,7 +39,12 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 		uint256 supplyCoefficient; 	//
 		bool activated;
 	}
-	mapping(int24 => Range) private ranges;
+
+    mapping(int24 => Range) private ranges;
+
+    int24 private inUseRange;
+	int24 private highestActivatedRange;
+	int24 private lowestActivatedRange;
 
 	constructor(
 		address _factory,
@@ -58,41 +59,43 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 		feePercentage = _feePercentage;
 	}
 
-	function balance0() public view returns(uint256) {
+///
+/// VIEW
+///
+	function balance0()
+	public override view
+	returns(uint256)
+	{
 		return IERC20(token0).balanceOf(address(this));
 	}
 
-	function balance1() public view returns(uint256) {
+	function balance1()
+	public override view
+	returns(uint256)
+	{
 		return IERC20(token1).balanceOf(address(this));
 	}
 	
-	function initialize(uint256 _startingSqrtPriceBottom)
-	external override 
-	{
-		require(initialized == false, "DesireSwapV0Pool: IS_ALREADY_INITIALIZED");
-		ranges[0].sqrtPriceBottom = _startingSqrtPriceBottom;
-		ranges[0].sqrtPriceTop = _startingSqrtPriceBottom*sqrtRangeMultiplier/10**18;
-		ranges[0].activated = true;
-		initialized = true;
-	}
-
 	function getLastBalances()
 	external override view
-	returns (uint256 _lastBalance0, uint256 _lastBalance1) {
+	returns (uint256 _lastBalance0, uint256 _lastBalance1)
+	{
 		_lastBalance0 = lastBalance0;
 		_lastBalance1 = lastBalance1;
 	}
 
 	function getTotalReserves() 
 	external override view
-	returns (uint256 _totalReserve0, uint256 _totalReserve1) {
+	returns (uint256 _totalReserve0, uint256 _totalReserve1)
+	{
 		_totalReserve0 = totalReserve0;
 		_totalReserve1 = totalReserve1;
 	}
 
 	function getRangeInfo(int24 index) 
 	public override view
-	returns (uint256 _reserve0, uint256 _reserve1, uint256 _sqrtPriceBottom, uint256 _sqrtPriceTop) {
+	returns (uint256 _reserve0, uint256 _reserve1, uint256 _sqrtPriceBottom, uint256 _sqrtPriceTop)
+	{
 		_reserve0 = ranges[index].reserve0;
 		_reserve1 = ranges[index].reserve1;
 		_sqrtPriceBottom = ranges[index].sqrtPriceBottom;
@@ -100,24 +103,31 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	}
 
 ///
-/// Modify LastBalances, ranges.reserves and TotalReserves functions
+/// private
 ///
-	function _updateLastBalances(uint256 _lastBalance0, uint256 _lastBalance1) private {
+	function _updateLastBalances(
+		uint256 _lastBalance0,
+		uint256 _lastBalance1)
+	private
+	{
 		lastBalance0 = _lastBalance0;
 		lastBalance1 = _lastBalance1;
 	}
 
-	function _modifyRangeReserves(
+    function _modifyRangeReserves(
 		int24 index,
-		uint256 toAdd0, uint256 toAdd1,
-		bool add0, bool add1)
-		private
+		uint256 toAdd0,
+        uint256 toAdd1,
+		bool add0, /// add or substract
+        bool add1)
+	private
 	{
 		ranges[index].reserve0 = add0 ? ranges[index].reserve0 + toAdd0 : ranges[index].reserve0 - toAdd0;
 		ranges[index].reserve1 = add1 ? ranges[index].reserve1 + toAdd1 : ranges[index].reserve1 - toAdd1;
 		totalReserve0 = add0 ? totalReserve0 + toAdd0: totalReserve0 - toAdd0;
-		totalReserve1 = add1 ? totalReserve1 + toAdd0: totalReserve1 - toAdd1;
-        if(ranges[index].reserve0 == 0 && ranges[index-1].activated) {
+		totalReserve1 = add1 ? totalReserve1 + toAdd0: totalReserve1 - toAdd1;        
+
+		if(ranges[index].reserve0 == 0 && ranges[index-1].activated) {
             inUseRange++;
             emit InUseRangeChanged(index+1);
         }
@@ -129,7 +139,9 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 ///
 /// Range activation
 ///
-	function activate(int24 index) private {
+	function activate(int24 index)
+	private
+	{
 		require(!ranges[index].activated, 'DesireSwapV0: POSITION_ALREADY_ACTIVATED');
 		if(index > highestActivatedRange) {
 			highestActivatedRange = index;
@@ -149,9 +161,12 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 		emit RangeActivated(index);
 	}
 
+
 ///
+/// POOL ACTIONS
+///
+
 /// Swapping
-///
 
 	// below function make swap inside only one position. It is used to make "whole" swap.
 	// it swaps token0 to token1 if zeroForOne, else it swaps token1 to token 0.
@@ -175,7 +190,9 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         int24 index,
         address to,
         bool zeroForOne,
-        uint256 amountOut) private returns( uint256 amountIn)
+        uint256 amountOut)
+	private
+	returns( uint256 amountIn)
     {
         require(index == inUseRange, 'DesireSwapV0: WRONG_INDEX');
 		helpData memory h = helpData({
@@ -242,8 +259,8 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         bool zeroForOne,
         int256 amount,
         uint256 sqrtPriceLimit,
-        bytes calldata data
-    ) external override 
+        bytes calldata data)
+	external override 
 	returns (int256, int256)
     {        
         swapParams memory s= swapParams({
@@ -345,8 +362,13 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	//  It is minted when L is provided.
 	//  It is burned when L is taken.
 
-	function _printOnTicket0(int24 index, uint256 ticketId, uint256 liqToAdd) 
-	private returns(uint256 amount0ToAdd){ 
+	function _printOnTicket0(
+		int24 index,
+		uint256 ticketId,
+		uint256 liqToAdd) 
+	private
+	returns(uint256 amount0ToAdd)
+	{ 
 		if(!ranges[index].activated) activate(index);
 		uint256 reserve0 = ranges[index].reserve0;
 		uint256 reserve1 = ranges[index].reserve1;
@@ -369,8 +391,13 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 		//!!
 		_modifyRangeReserves(index, liqToAdd, 0, true, true); 
 	}
-	function _printOnTicket1(int24 index, uint256 ticketId, uint256 liqToAdd)
-	private returns(uint256 amount1ToAdd) { 
+	function _printOnTicket1(
+		int24 index,
+		uint256 ticketId,
+		uint256 liqToAdd)
+	private
+	returns(uint256 amount1ToAdd)
+	{ 
 		if(!ranges[index].activated) activate(index);
 		uint256 reserve0 = ranges[index].reserve0;
 		uint256 reserve1 = ranges[index].reserve1;
@@ -400,8 +427,8 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         int24 highestRangeIndex,
         uint256 liqToAdd,
 		bytes calldata data)
-        external override
-        returns(uint256 amount0, uint256 amount1)
+    external override
+    returns(uint256 amount0, uint256 amount1)
     {
         require(highestRangeIndex >= lowestRangeIndex);
 		helpData memory h = helpData({
@@ -481,8 +508,13 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 ///	REDEEM LIQ
 ///
 	// zeroOrOne 0=false if only token0 in reserves, 1=true if only token 1 in reserves.
-	function _readTicket(int24 index, uint256 ticketId, bool zeroOrOne)
-	private returns(uint256 amountToTransfer){
+	function _readTicket(
+		int24 index,
+		uint256 ticketId,
+		bool zeroOrOne)
+	private
+	returns(uint256 amountToTransfer)
+	{
 		uint256 supply = _ticketSupplyData[ticketId][index];
 		_ticketSupplyData[ticketId][index] = 0;
 		if(zeroOrOne){
@@ -498,7 +530,9 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 		ranges[index].supplyCoefficient -= supply;
 	}
 
-	function burn(address to, uint256 ticketId)
+	function burn(
+		address to,
+		uint256 ticketId)
 	external override
 	returns (uint256, uint256)
 	{
@@ -563,8 +597,8 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         address recipient,
         uint256 amount0,
         uint256 amount1,
-        bytes calldata data
-    ) external override
+        bytes calldata data)
+	external override
 	{
         uint256 fee0 = amount0*feePercentage/D;
         uint256 fee1 = amount1*feePercentage/D;
@@ -588,10 +622,25 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         emit Flash(msg.sender, recipient, amount0, amount1, paid0, paid1);
     }
 
+	
+///
+/// OWNER ACTIONS
+///
+
+	function initialize(uint256 _startingSqrtPriceBottom)
+	external override 
+	{
+		require(msg.sender == IDesireSwapV0Factory(factory).owner());
+		require(initialized == false, "DesireSwapV0Pool: IS_ALREADY_INITIALIZED");
+		ranges[0].sqrtPriceBottom = _startingSqrtPriceBottom;
+		ranges[0].sqrtPriceTop = _startingSqrtPriceBottom*sqrtRangeMultiplier/10**18;
+		ranges[0].activated = true;
+		initialized = true;
+	}
+	
 	function collectFee(
 		address token,
-		uint256 amount
-		)
+		uint256 amount)
 	external override 
 	{
 		require(msg.sender == IDesireSwapV0Factory(factory).owner());
@@ -601,10 +650,11 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 		emit CollectFee(token, amount);
 	}
 
-	function setProtocolFeeIsOn(bool turn)
-	external
+	function setProtocolFee(bool _protocolFeeIsOn, uint256 _protocolFeePart)
+	external override
 	{
 		require(msg.sender == IDesireSwapV0Factory(factory).owner());
-		protocolFeeIsOn = turn;
+		protocolFeeIsOn = _protocolFeeIsOn;
+		protocolFeePart = _protocolFeePart;
 	}
 }
