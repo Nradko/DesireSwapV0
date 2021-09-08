@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "./Ticket.sol";
-import "./library/PoolHelper.sol";
-import "./library/TransferHelper.sol";
+import "./libraries/PoolHelper.sol";
+import "./libraries/TransferHelper.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/IDesireSwapV0Factory.sol"; 
 import "./interfaces/IDesireSwapV0PoolEvents.sol"; 		

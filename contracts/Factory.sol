@@ -7,25 +7,25 @@ import"./interfaces/IDesireSwapV0Factory.sol";
 contract DesireSwapV0Factory is IDesireSwapV0Factory {
     address public override owner;
     address public override feeCollector;
-    address public override body;
-
-    bool public override protocolFeeIsOn;
-    uint256 public override protocolFeePart;
+    address public immutable override body;
 
     mapping(uint256 => uint256) public override feeToSqrtRangeMultiplier;
-    mapping(address => mapping(address => mapping(uint256 => address))) public poolAddress;
+    mapping(address => mapping(address => mapping(uint256 => address))) public override poolAddress;
+
+    address[] public override poolList;
+    uint256 public override poolCount = 0;
 
     modifier onlyBy(address _account) {
         require(msg.sender == owner, "DesireSwapV0Factory: SENDER_IS_NOT_THE_OWNER");
         _;
     }
 
-    constructor(address _body){
-        owner = msg.sender;
-        feeCollector = msg.sender;
-        emit OwnerChanged(address(0), msg.sender);
+    constructor(address _owner, address _body){
+        owner = _owner;
+        feeCollector = _owner;
+        emit OwnerChanged(address(0), _owner);
         body = _body;
-        emit BodyChanged(address(0), body);
+        poolList.push(address(0));
     }
 
 
@@ -42,18 +42,16 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
         require(token0 != address(0) && token1 != address(0));
         require(poolAddress[token0][token1][_fee] == address(0));
         address pool = address(new DesireSwapV0Pool(
-            address(this), token0, token1,
+            address(this), body, token0, token1,
 		    _fee, feeToSqrtRangeMultiplier[_fee]
             ));
         poolAddress[token0][token1][_fee] = pool;
         poolAddress[token1][token0][_fee] = pool;
+        poolList.push(pool);
+        poolCount++;
         emit PoolCreated(token0, token1, _fee, pool);
     }
 
-    function getPoolAddress(address _tokenA, address _tokenB, uint256 _fee)
-    external override view returns(address){
-        return poolAddress[_tokenA][_tokenB][_fee];
-    }
 
     function setOwner(address _owner) external override onlyBy(owner) {
         emit OwnerChanged(owner, _owner);
@@ -65,8 +63,4 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
         feeCollector = _feeCollector;
     }
 
-    function setBody(address _body) external override onlyBy(owner) {
-        emit BodyChanged(body, _body);
-        body = _body;
-    }
 }
