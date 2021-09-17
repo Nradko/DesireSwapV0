@@ -13,6 +13,8 @@ async function consoleBalances(owner, token0, token1){
 	console.log("%s balances -> tokenA: %s -> tokenB: %s",owner,balanceA.toString(), balanceB.toString());
 }
 
+const tokenSupply = "10000000000000000000";
+const fee = "3000000000000000"
 
 describe("Deploy", function () {
 	it("TESTing...", async function () {
@@ -24,9 +26,7 @@ describe("Deploy", function () {
 		const Factory = await ethers.getContractFactory("DesireSwapV0Factory");
 		const factory = await Factory.deploy(owner.address);
 		console.log('Factory address: %s', factory.address);
-
 		expect( await factory.owner(), 'get facoty owner').to.eq(owner.address);
-		
 
 		const Router = await ethers.getContractFactory("SwapRouter");
 		const router = await Router.deploy(factory.address, A3.address);
@@ -38,21 +38,21 @@ describe("Deploy", function () {
 
 		const Token = await ethers.getContractFactory("TestERC20");
 		const tokenA = await Token.deploy("TOKENA", "TA", A1.address, A2.address);
-		console.log('TA address: %s', tokenA.address);
 		const tokenB = await Token.deploy("TOKENB", "TB", A1.address, A2.address);
+		console.log('TA address: %s', tokenA.address);
 		console.log('TB address: %s', tokenB.address);
-		const fee = "3000000000000000"
+
 		await factory.createPool(tokenA.address, tokenB.address, fee);
 		const poolAddress = await factory.poolAddress(tokenA.address, tokenB.address, fee);
 		console.log('Pool address: %s', poolAddress);
+		const Pool = await ethers.getContractFactory("DesireSwapV0Pool");
+		const pool = await Pool.attach(poolAddress);
 		
 		// expect(await factory.poolAddress(tokenA.address, tokenB.address, fee), 'getPool in order').to.eq(poolAddress)
 		// expect(await factory.poolAddress(tokenB.address, tokenA.address, fee), 'getPool in reverse').to.eq(poolAddress)
 		// await expect(factory.createPool(tokenA.address, tokenB.address, fee)).to.be.reverted
 		// await expect(factory.createPool(tokenB.address, tokenA.address, fee)).to.be.reverted
 		
-		const Pool = await ethers.getContractFactory("DesireSwapV0Pool");
-		const pool = await Pool.attach(poolAddress);
 
 		// expect(await pool.token0(), 'checking token0 in pool').to.be.oneOf([tokenA.address, tokenB.address]);
 		// expect(await pool.token1(), 'checking token1 in pool').to.be.oneOf([tokenA.address, tokenB.address]);

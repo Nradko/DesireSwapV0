@@ -47,11 +47,12 @@ library PoolHelper {
         internal view
         returns(uint256)
     {
-        uint256 L = LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1); //dim = D
-        if(zeroForOne)
-            return (L*L/(reserve1 + L*sqrt0/D/d - amountOut) - D*(reserve0 + L*d/sqrt1))/D; //dim = 0
-        else
-        return (L*L/(reserve0 + L*d/sqrt1 - amountOut) - D*(reserve1 + L*sqrt0/D/d))/D;     // dim = 0
+        uint256 L = LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1); //dim = d
+        require(L>0, "Try different amounts");
+        if(zeroForOne){
+            return (L*L/(reserve1 + L*sqrt0/D/d - amountOut)/D - (reserve0 + L*d/sqrt1)); //dim = 0
+        }else
+            return (L*L/(reserve0 + L*d/sqrt1 - amountOut)/D - (reserve1 + L*sqrt0/D/d));     // dim = 0
     }
 
     function AmountOut(
@@ -62,12 +63,12 @@ library PoolHelper {
         internal view
         returns(uint256)
     {
-        uint256 L = LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1); //dim = D
-
+        uint256 L = LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1); //dim = d
+        require(L>0, "Try different amounts");
         if (zeroForOne){
-            return (D*(reserve1 + L*sqrt0/D/d) - L*L/(reserve0 + L*d/sqrt1 + amountIn))/D;
+            return ((reserve1 + L*sqrt0/D/d) - L*L/(reserve0 + L*d/sqrt1 + amountIn)/D);
         }
-        return (D*(reserve0 + L*d/sqrt1) - L*L/(reserve1 + L*sqrt0/D/d + amountIn))/D;  //dim = 0
+        return ((reserve0 + L*d/sqrt1) - L*L/(reserve1 + L*sqrt0/D/d + amountIn)/D);  //dim = 0
     }
 
     /* UNUSED

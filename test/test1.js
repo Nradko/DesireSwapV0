@@ -36,7 +36,7 @@ async function getTotalReserves(pool){
     console.log("totalResereves are: %s and %s", reserves[1].toString(), reserves[2].toString());
 }
 
-const tokenSupply = "10000000000000000000";
+const tokenSupply = "100000000000000000000000000000";
 const fee = "3000000000000000"
 const multiplier = 1.002501875*1.002501875;
 
@@ -90,7 +90,7 @@ describe("Deploy", function () {
 		await tokenB.connect(A2).approve(router.address, tokenSupply)
         console.log("done")
 
-        for( let step = 0; step < 10; step++){
+        for( let step = 0; step < 7; step++){
             console.log("cycle %s", step)
             await liqManager.connect(A1).supply({
                 "token0": tokenA.address,
@@ -98,7 +98,7 @@ describe("Deploy", function () {
                 "fee": fee,
                 "lowestRangeIndex" : -step,
                 "highestRangeIndex": step,
-                "liqToAdd": "1000000000000000000",
+                "liqToAdd": "10000000000000000000000000000",
                 "amount0Max":"10000000000000000000000000000",
                 "amount1Max": "10000000000000000000000000000",
                 "recipient": A1.address,
@@ -112,7 +112,7 @@ describe("Deploy", function () {
                 "fee": fee,
                 "recipient": A2.address,
                 "deadline": "1000000000000000000000000",
-                "amountIn": (BigNumber.from("1000000000000000").mul(BigNumber.from(step+1))).toString(),
+                "amountIn": (BigNumber.from("10000000000000000000000000").mul(BigNumber.from((step+1)*(step+2)/2))).toString(),
                 "amountOutMinimum": "10000000000000",
                 "sqrtPriceLimitX96": "0"
             })
@@ -124,7 +124,7 @@ describe("Deploy", function () {
                 "fee": fee,
                 "recipient": A2.address,
                 "deadline": "1000000000000000000000000",
-                "amountIn": BigNumber.from("2000000000000000").mul(step+1).toString(),
+                "amountIn": BigNumber.from("20000000000000000000000000").mul((step+1)*(step+2)/2).toString(),
                 "amountOutMinimum": "2000000000000",
                 "sqrtPriceLimitX96": "0"
             })
@@ -136,8 +136,8 @@ describe("Deploy", function () {
                 "fee": fee,
                 "recipient": A2.address,
                 "deadline": "1000000000000000000000000",
-                "amountIn": BigNumber.from("1000000000000000").mul(step+1).toString(),
-                "amountOutMinimum": "100000000000",
+                "amountIn": BigNumber.from("10000000000000000000000000").mul((step+1)*(step+2)/2).toString(),
+                "amountOutMinimum": "100000000001",
                 "sqrtPriceLimitX96": "0"
             })
             console.log("cycle %s _end", step)
@@ -146,22 +146,39 @@ describe("Deploy", function () {
             await consoleBalances(pool.address, tokenA, tokenB);
         }
 
-        for( let step = 0; step < 10; step++){
+        for( let step = 0; step < 7; step++){
             console.log("remove %s", step)
-            got = await liqManager.connect(A1).redeem({
+            await liqManager.connect(A1).redeem({
                 "positionId" : step+1,
                 "recipient" : A1.address,
                 "deadline" : "1000000000000000",
             })
-            let {0: got0, 1: got1} = got;
-            console.log("got: %s ", got1);
             await consoleBalances(A1.address, tokenA, tokenB);
             await consoleBalances(pool.address, tokenA, tokenB);
         }
         await consoleBalances(A1.address, tokenA, tokenB);
         await consoleBalances(A2.address, tokenA, tokenB);
         await consoleBalances(pool.address, tokenA, tokenB);
-        	
-	});
+        let a = await pool.totalReserve0();
+        let b = await pool.totalReserve1();
+        console.log(a.toString());
+        console.log(b.toString());
+        
+        for( let step = -7; step < 8; step++){
+
+            rangeInfo = await pool.getFullRangeInfo(step);
+		    const {0: reserve0, 1: reserve1, 2: sB, 3: sT, 4: SC} = rangeInfo;
+            // console.log(reserve0.toString())
+            // console.log(reserve1.toString())
+            // console.log(sB.toString())
+            // console.log(sT.toString())
+            // console.log("aa")
+            // console.log(SC.toString())
+            // console.log("aa")
+            console.log("Range[%s] info: %s  %s  %s  %s  %s", step, reserve0.toString(), reserve1.toString(), sB.toString(), sT.toString(), SC.toString());
+        }
+        
+    
+    });
 });
 

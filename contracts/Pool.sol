@@ -28,8 +28,8 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	uint256 public immutable override sqrtRangeMultiplier;   // example: 100100000.... is 1.001 (* 10**)
 	uint256 public immutable override feePercentage;            //  0 fee is 0 // 100% fee is 1* 10**18;
 	uint256 public protocolFeePart = 2*10**17;
-	uint256 private totalReserve0;
-	uint256 private totalReserve1;
+	uint256 public totalReserve0;
+	uint256 public totalReserve1;
 	uint256 private lastBalance0;
 	uint256 private lastBalance1;
 
@@ -102,6 +102,17 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 		_sqrtPriceBottom = ranges[index].sqrtPriceBottom;
 		_sqrtPriceTop = _sqrtPriceBottom * sqrtRangeMultiplier / D;
 	}
+
+	function getFullRangeInfo(int24 index) 
+	public view
+	returns (uint256 _reserve0, uint256 _reserve1, uint256 _sqrtPriceBottom, uint256 _sqrtPriceTop, uint256 _supplyCoefficient)
+	{
+		_reserve0 = ranges[index].reserve0;
+		_reserve1 = ranges[index].reserve1;
+		_sqrtPriceBottom = ranges[index].sqrtPriceBottom;
+		_sqrtPriceTop = _sqrtPriceBottom * sqrtRangeMultiplier / D;
+		_supplyCoefficient = ranges[index].supplyCoefficient;
+	}
 	// function currentPrice()
 	// public view
 	// returns(uint256 currentPrice)
@@ -129,7 +140,8 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 		uint256 toAdd0,
         uint256 toAdd1,
 		bool add0, /// add or substract
-        bool add1)
+        bool add1,
+		bool isSwap)
 	private
 	{
 		ranges[index].reserve0 = add0 ? ranges[index].reserve0 + toAdd0 : ranges[index].reserve0 - toAdd0;
@@ -137,14 +149,16 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 		totalReserve0 = add0 ? totalReserve0 + toAdd0: totalReserve0 - toAdd0;
 		totalReserve1 = add1 ? totalReserve1 + toAdd1: totalReserve1 - toAdd1;        
 
-		if(ranges[index].reserve0 == 0 && ranges[index+1].activated) {
-            inUseRange++;
-            emit InUseRangeChanged(index+1);
-        }
-		if(ranges[index].reserve1 == 0 && ranges[index-1].activated) {
-            inUseRange--;
-            emit InUseRangeChanged(index-1);
-        }
+		if(isSwap){
+			if(ranges[index].reserve0 == 0 && ranges[index+1].activated) {
+				inUseRange++;
+				emit InUseRangeChanged(index+1);
+			}
+			if(ranges[index].reserve1 == 0 && ranges[index-1].activated) {
+				inUseRange--;
+				emit InUseRangeChanged(index-1);
+			}
+		}
 	}
 ///
 /// Range activation
@@ -219,7 +233,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	private
 	returns( uint256 amountIn)
     {
-        // // // console.log("swapInRange_start");
+        require(amountOut > 0, "DSV0POOL(swapInRange): try different amount IN");
 		require(index == inUseRange, "DSV0POOL(swapInRange): WI");
 		helpData memory h = helpData({
 			lastBalance0: lastBalance0, lastBalance1: lastBalance1,
@@ -229,51 +243,42 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 		});
 		h.value11 = h.value10 * sqrtRangeMultiplier / D;
         require((zeroForOne  && amountOut <= h.value01) ||
-                (!zeroForOne && amountOut <= h.value00), "DSV0POOL(swapInRange): INSUFFICIENT_POSITION_LIQ");        
-		
+                (!zeroForOne && amountOut <= h.value00), "DSV0POOL(swapInRange): INSUFFICIENT_POSITION_LIQ");
 		uint256 amountInHelp = PoolHelper.AmountIn(zeroForOne, h.value00, h.value01, h.value10, h.value11, amountOut); // do not include fees;
-        uint256 collectedFee = amountInHelp*feePercentage/D;
+		uint256 collectedFee = amountInHelp*feePercentage/D;
 		amountIn = amountInHelp + collectedFee;
-		// // // console.log(amountInHelp);
-		// // // console.log(amountIn);
         if (protocolFeeIsOn){
 			amountInHelp = amountIn - (collectedFee * protocolFeePart)/D; //amountIn - protocolFee. It is amount that is added to reserve
 		}
 		if(zeroForOne) {
             //??
-			// // // console.log(amountInHelp);
-			// // // console.log(amountOut);
-			// // // console.log(PoolHelper.LiqCoefficient(h.value00 + amountInHelp, h.value01 - amountOut, h.value10, h.value11));
-			// // // console.log(PoolHelper.LiqCoefficient(h.value00, h.value01, h.value10, h.value11));
 			require(PoolHelper.LiqCoefficient(h.value00 + amountInHelp, h.value01 - amountOut, h.value10, h.value11)
 				>= PoolHelper.LiqCoefficient(h.value00, h.value01, h.value10, h.value11),
              'DSV0POOL(swapInRange): LIQ_COEFFICIENT_IS_TOO_LOW'); //assure that after swap there is more o r equal liquidity. If PoolHelper.AmountIn works correctly it can be removed.
             //!!
+			require(amountOut <= h.value01, 'DSV0POOL(swapInRange): ETfT error');
             _modifyRangeReserves(
                 index,
                 amountInHelp,
-                amountOut, true, false);
+                amountOut, true, false,
+				true);
         }
         // token1 for token0 // token1 in; token0 out;
         else {    
             //??
-        	// console.log(amountInHelp);
-			// console.log(amountOut);
-			// console.log(PoolHelper.LiqCoefficient(h.value00 - amountOut, h.value01 + amountInHelp, h.value10, h.value11));
-			// console.log(PoolHelper.LiqCoefficient(h.value00, h.value01, h.value10, h.value11));
 			require(PoolHelper.LiqCoefficient(h.value00 - amountOut, h.value01 + amountInHelp, h.value10, h.value11) 
 				>= PoolHelper.LiqCoefficient(h.value00, h.value01, h.value10, h.value11),
             'DSV0POOL(swapInRange): LIQ_COEFFICIENT_IS_TOO_LOW'); //assure that after swap there is more or equal liquidity. If PoolHelper.AmountIn works correctly it can be removed.            
             //!!
+			require(amountOut <= h.value00, 'DSV0POOL(swapInRange): ETfT error');
             _modifyRangeReserves(
                 index,
                 amountOut,
-                amountInHelp, false, true);
+                amountInHelp, false, true,
+				true);
         }
 		emit SwapInRange(msg.sender, index, zeroForOne, amountIn, amountOut, to);
 		delete h;
-		// // // console.log("swapInRange_stop");
-
     }
 
 
@@ -298,8 +303,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         bytes calldata data)
 	external override 
 	returns (int256, int256)
-    {   
-		// // console.log("Swap_start");     
+    {       
 		swapParams memory s= swapParams({
 			to: to, zeroForOne: zeroForOne,
 			amount: amount, sqrtPriceLimit: sqrtPriceLimit,
@@ -319,9 +323,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         // tokensForExactTokens
         //
         // token0 In, token1 Out, tokensForExactTokens
-		// // console.log("Swap_starting_swapping");
-        if(s.amount <= 0){
-            // // console.log("TforET");
+        if(s.amount < 0){
 			remained = uint256(-s.amount);
             if( s.zeroForOne){
                 require(remained <= totalReserve1, "DSV0POOL(swap): TR1");
@@ -348,14 +350,15 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         //
         //  exactTokensForTokens
         //
-        else {
-			// // console.log("ETforT");
+        else if (s.amount > 0)
+		{
 			remained = uint256(s.amount);
             uint256 predictedFee = remained *feePercentage/D;
             (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(usingRange);
             uint256 amountOut = PoolHelper.AmountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained-predictedFee);
+			require(amountOut < (s.zeroForOne ? totalReserve1 : totalReserve0));
 			while(
-				amountOut >= (s.zeroForOne? h.value01 : h.value00) &&
+				amountOut > (s.zeroForOne? h.value01 : h.value00) &&
 				(
 					(s.zeroForOne ?
 						sqrtPriceLimit > ranges[usingRange].sqrtPriceBottom * sqrtRangeMultiplier / D
@@ -364,24 +367,20 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 				)
 			) 
 			{
-				// // console.log("in while");
-				// // console.log(uint24(inUseRange));
                 remained -= _swapInRange(usingRange, s.to, s.zeroForOne, s.zeroForOne ? h.value01 : h.value00);
                 amountSend += s.zeroForOne ? h.value01 : h.value00;
                 predictedFee = remained *feePercentage/D;
 				usingRange = inUseRange;
                 (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(usingRange);
-                amountOut = PoolHelper.AmountIn(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained-predictedFee);
+				amountOut = PoolHelper.AmountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained-predictedFee);
             }
-            // // console.log("in while_end");
 			uint256 help = _swapInRange(usingRange, s.to, s.zeroForOne, amountOut);
-			remained = help >= remained ? 0 : remained - help;
+			require(help <= remained, 'DSV0POOL(swap): Try different amountIN');
+			remained -= help;
             amountSend += amountOut;
 			amountRecieved = uint256(s.amount) - remained;
         }
 		//!!!
-		// // console.log(amountSend);
-		// // console.log(amountRecieved);
 		TransferHelper.safeTransfer(s.zeroForOne ? token1 : token0, s.to, amountSend); 
 		IDesireSwapV0SwapCallback(msg.sender).desireSwapV0SwapCallback(
 			s.zeroForOne ? int256(amountRecieved) : -int256(amountSend),
@@ -405,7 +404,6 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         emit Swap( msg.sender, s.zeroForOne, s.amount, s.to);
 		delete s;
 		delete h;
-		// // console.log("Swap_end"); 
 		return (amount0, amount1);
     }
 ///
@@ -424,7 +422,6 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	private
 	returns(uint256 amount0ToAdd)
 	{ 
-		// console.log("print0_start");
 		if(!ranges[index].activated) activate(index);
 		(uint256 reserve0, uint256 reserve1,
 		uint256 sqrtPriceBottom, uint256 sqrtPriceTop)
@@ -442,7 +439,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 		}
 		ranges[index].supplyCoefficient += _ticketSupplyData[ticketId][index];
 		//!!
-		_modifyRangeReserves(index, amount0ToAdd, 0, true, true); 
+		_modifyRangeReserves(index, amount0ToAdd, 0, true, true, false); 
 	}
 	function _printOnTicket1(
 		int24 index,
@@ -451,7 +448,6 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	private
 	returns(uint256 amount1ToAdd)
 	{ 
-		// console.log("print1_start");
 		if(!ranges[index].activated) activate(index);
 		(uint256 reserve0, uint256 reserve1,
 		uint256 sqrtPriceBottom, uint256 sqrtPriceTop)
@@ -472,7 +468,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 		}
 		ranges[index].supplyCoefficient += _ticketSupplyData[ticketId][index];
 		//!!
-		_modifyRangeReserves(index, 0, amount1ToAdd, true, true); 
+		_modifyRangeReserves(index, 0, amount1ToAdd, true, true, false); 
 	}
 		
 	function mint(
@@ -484,7 +480,6 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     external override
     returns(uint256 amount0, uint256 amount1)
     {
-		// // console.log("mint_start"); 
 		require(initialized, "DSV0POOL(mint): not_initialized");
 		require(highestRangeIndex >= lowestRangeIndex, "DSV0POOL(mint): Indexes");
 		helpData memory h = helpData({
@@ -493,32 +488,30 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 			value00: 0, value01: 0,
 			value10: 0, value11: 0});
 		uint256 ticketId = _mint(to);
-		// console.log(ticketId);
         int24 usingRange = inUseRange;   
 		_ticketData[ticketId].lowestRangeIndex = lowestRangeIndex;
 		_ticketData[ticketId].highestRangeIndex = highestRangeIndex;
-		// console.log(uint24(_ticketData[1].highestRangeIndex));
 		_ticketData[ticketId].liqAdded = liqToAdd;
-        if(lowestRangeIndex > usingRange){
-			//in this case ranges.reserve1 should be 0
-            for(int24 i = highestRangeIndex; i >= lowestRangeIndex; i--){
-                amount0 += _printOnTicket1(i, ticketId, liqToAdd);          
+        if(lowestRangeIndex > usingRange) //in this case ranges.reserve1 should be 0
+        {
+			for(int24 i = highestRangeIndex; i >= lowestRangeIndex; i--){
+                amount0 += _printOnTicket0(i, ticketId, liqToAdd);          
             }
         }
-		else if(highestRangeIndex < usingRange)
+		else if(highestRangeIndex < usingRange) // in this case ranges.reserve0 should be 0
         {
-            // in this case ranges.reserve0 should be 0
             for(int24 i = lowestRangeIndex; i <= highestRangeIndex; i++){
-                amount1 +=  _printOnTicket0(i, ticketId, liqToAdd); 
+                amount1 +=  _printOnTicket1(i, ticketId, liqToAdd); 
             }   
         }
 		else
         {
 			for(int24 i = usingRange + 1; i <= highestRangeIndex; i++){
-                amount0 += _printOnTicket1(i, ticketId, liqToAdd);               
+                amount0 += _printOnTicket0(i, ticketId, liqToAdd);               
             }
+
 			for(int24 i = usingRange - 1; i >= lowestRangeIndex; i--){
-				amount1 +=  _printOnTicket0(i, ticketId, liqToAdd);
+				amount1 +=  _printOnTicket1(i, ticketId, liqToAdd);
             }
 
             if(!ranges[usingRange].activated) activate(usingRange);
@@ -548,7 +541,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
             //!!
 			ranges[usingRange].supplyCoefficient += _ticketSupplyData[ticketId][usingRange];
 			//!!
-            _modifyRangeReserves(usingRange, amount0ToAdd, amount1ToAdd, true ,true); 
+            _modifyRangeReserves(usingRange, amount0ToAdd, amount1ToAdd, true ,true, false); 
         }
 		IDesireSwapV0MintCallback(msg.sender).desireSwapV0MintCallback(amount0, amount1, data);
 		///???
@@ -557,7 +550,6 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 		require(h.balance0 >= h.lastBalance0 + amount0 && h.balance1 >= h.lastBalance1 + amount1, 'DSV0POOL(mint): BALANCES_ARE_TOO_LOW');
 	    emit Mint(to, ticketId);
         _updateLastBalances(h.balance0, h.balance1);
-		// // console.log("endMint");
 		delete h;
     }
 
@@ -572,17 +564,16 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	private
 	returns(uint256 amountToTransfer)
 	{
-		console.log(uint24(index));
 		uint256 supply = _ticketSupplyData[ticketId][index];
 		_ticketSupplyData[ticketId][index] = 0;
 		if(sendZero){
 			amountToTransfer = supply*ranges[index].reserve0/ranges[index].supplyCoefficient;
 			//!!
-			_modifyRangeReserves(index, amountToTransfer, 0, false, false);
+			_modifyRangeReserves(index, amountToTransfer, 0, false, false, false);
 		} else {
 			amountToTransfer = supply*ranges[index].reserve1/ranges[index].supplyCoefficient;
 			//!!
-			_modifyRangeReserves(index, 0, amountToTransfer, false, false);			
+			_modifyRangeReserves(index, 0, amountToTransfer, false, false, false);			
 		}
 		//!!
 		ranges[index].supplyCoefficient -= supply;
@@ -594,7 +585,6 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	external override
 	returns (uint256, uint256)
 	{
-		console.log("burn");
 		require(_exists(ticketId), 'DSV0POOL(burn): TOKEN_DOES_NOT_EXISTS');
 		address owner = Ticket.ownerOf(ticketId);
 		require(tx.origin == owner,'DSV0POOL(burn): SENDER_IS_NOT_THE_OWNER');
@@ -606,51 +596,34 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 		int24 highestRangeIndex = _ticketData[ticketId].highestRangeIndex;
 		int24 lowestRangeIndex = _ticketData[ticketId].lowestRangeIndex;
 		_burn(ticketId);
-		console.log(uint24(highestRangeIndex));
-		console.log(uint24(lowestRangeIndex));
 		if(highestRangeIndex < usingRange){
-			console.log("flag0");
 			for(int24 i = highestRangeIndex; i >= lowestRangeIndex; i--){
-				h.value00 += _readTicket(i, ticketId, false);
+				h.value00 += _readTicket(i, ticketId, true);
 			}
 		} else if(lowestRangeIndex > usingRange){
-			console.log("flag1");
 			for(int24 i = lowestRangeIndex; i <= highestRangeIndex; i++){
-				h.value01 += _readTicket(i, ticketId, true);
+				h.value01 += _readTicket(i, ticketId, false);
 			}
 		} else
 		{
-			console.log("flag2");
 			for(int24 i = highestRangeIndex; i > usingRange; i--){
-				h.value00 += _readTicket(i, ticketId, false);
+				h.value00 += _readTicket(i, ticketId, true);
 			}
 			for(int24 i = lowestRangeIndex; i < usingRange; i++){
-				h.value01 += _readTicket(i, ticketId, true);
+				h.value01 += _readTicket(i, ticketId, false);
 			}
-			console.log("flag3");
 			uint256 supply = _ticketSupplyData[ticketId][usingRange];
-			console.log("flag3");
 			_ticketSupplyData[ticketId][usingRange] = 0;
-			console.log(supply);
-			console.log(ranges[usingRange].reserve0);
-			console.log(ranges[usingRange].supplyCoefficient);
-			console.log("flag3");
 			h.value10 = supply*ranges[usingRange].reserve0/ranges[usingRange].supplyCoefficient;
-			console.log("flag3");
 			h.value11 = supply*ranges[usingRange].reserve1/ranges[usingRange].supplyCoefficient;
-			console.log("flag3");
 			h.value00 += h.value10;
 			h.value01 += h.value11;
-			console.log("flag4");
-			_modifyRangeReserves(usingRange, h.value10, h.value11, false, false);
+			_modifyRangeReserves(usingRange, h.value10, h.value11, false, false, false);
 			ranges[usingRange].supplyCoefficient -= supply;
-			console.log("flag5");
 		}
 		//!!!
-		console.log("flag6");
 		TransferHelper.safeTransfer(token0, to, h.value00);
 		TransferHelper.safeTransfer(token1, to, h.value01);
-		console.log("flag7");
 		h.balance0 = balance0();
 		h.balance1 = balance1();
 		//???
@@ -661,7 +634,6 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 		uint256 amount0 = h.value00;
 		uint256 amount1 = h.value01;
 		delete h;
-		console.log("burn_end");
 		return (amount0, amount1);
 	}
 
