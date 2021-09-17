@@ -69,6 +69,7 @@ contract Ticket is ITicket{
 
     function _burn(uint256 ticketId) internal {
         address owner = ownerOf(ticketId);
+        require(tx.origin == owner);
         _balances[owner] -= 1;
         _owners[ticketId] = address(0);
         delete _ticketData[ticketId];

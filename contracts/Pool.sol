@@ -16,17 +16,18 @@ import "hardhat/console.sol";
 
 contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	bool public override initialized;
-	bool public override protocolFeeIsOn;
+	bool public override protocolFeeIsOn = true;
 
 	address public immutable override factory;
 	address public immutable override token0;
 	address public immutable override token1;
 
+	uint256 private constant d = 10**9;
 	uint256 private constant D = 10**18;
 	uint256 private constant DD = 10**36;
 	uint256 public immutable override sqrtRangeMultiplier;   // example: 100100000.... is 1.001 (* 10**)
 	uint256 public immutable override feePercentage;            //  0 fee is 0 // 100% fee is 1* 10**18;
-	uint256 public protocolFeePart = 2*D/10;
+	uint256 public protocolFeePart = 2*10**17;
 	uint256 private totalReserve0;
 	uint256 private totalReserve1;
 	uint256 private lastBalance0;
@@ -209,8 +210,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	private
 	returns( uint256 amountIn)
     {
-        console.log("swapInRange_start");
-		console.log(amountOut);
+        // // // console.log("swapInRange_start");
 		require(index == inUseRange, 'DesireSwapV0: WRONG_INDEX');
 		helpData memory h = helpData({
 			lastBalance0: lastBalance0, lastBalance1: lastBalance1,
@@ -223,14 +223,19 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
                 (!zeroForOne && amountOut <= h.value00), 'DesireSwapV0: INSUFFICIENT_POSITION_LIQUIDITY');        
 		
 		uint256 amountInHelp = PoolHelper.AmountIn(zeroForOne, h.value00, h.value01, h.value10, h.value11, amountOut); // do not include fees;
-        amountIn = amountInHelp*D/(D - feePercentage);
-        uint256 collectedFee = amountIn - amountInHelp;
-        if (protocolFeeIsOn)
+        uint256 collectedFee = amountInHelp*feePercentage/D;
+		amountIn = amountInHelp + collectedFee;
+		// // // console.log(amountInHelp);
+		// // // console.log(amountIn);
+        if (protocolFeeIsOn){
 			amountInHelp = amountIn - (collectedFee * protocolFeePart)/D; //amountIn - protocolFee. It is amount that is added to reserve
+		}
 		if(zeroForOne) {
             //??
-			console.log(PoolHelper.LiqCoefficient(h.value00 + amountInHelp, h.value01 - amountOut, h.value10, h.value11));
-			console.log(PoolHelper.LiqCoefficient(h.value00, h.value01, h.value10, h.value11));
+			// // // console.log(amountInHelp);
+			// // // console.log(amountOut);
+			// // // console.log(PoolHelper.LiqCoefficient(h.value00 + amountInHelp, h.value01 - amountOut, h.value10, h.value11));
+			// // // console.log(PoolHelper.LiqCoefficient(h.value00, h.value01, h.value10, h.value11));
 			require(PoolHelper.LiqCoefficient(h.value00 + amountInHelp, h.value01 - amountOut, h.value10, h.value11)
 				>= PoolHelper.LiqCoefficient(h.value00, h.value01, h.value10, h.value11),
              'DesireSwapV0: LIQ_COEFFICIENT_IS_TOO_LOW'); //assure that after swap there is more o r equal liquidity. If PoolHelper.AmountIn works correctly it can be removed.
@@ -254,7 +259,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         }
 		emit SwapInRange(msg.sender, index, zeroForOne, amountIn, amountOut, to);
 		delete h;
-		console.log("swapInRange_stop");
+		// // // console.log("swapInRange_stop");
 
     }
 
@@ -281,7 +286,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	external override 
 	returns (int256, int256)
     {   
-		console.log("Swap_start");     
+		// // console.log("Swap_start");     
 		swapParams memory s= swapParams({
 			to: to, zeroForOne: zeroForOne,
 			amount: amount, sqrtPriceLimit: sqrtPriceLimit,
@@ -301,9 +306,9 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         // tokensForExactTokens
         //
         // token0 In, token1 Out, tokensForExactTokens
-		console.log("Swap_starting_swapping");
+		// // console.log("Swap_starting_swapping");
         if(s.amount <= 0){
-            console.log("TforET");
+            // // console.log("TforET");
 			remained = uint256(-s.amount);
             if( s.zeroForOne){
                 require(remained <= totalReserve1);
@@ -331,7 +336,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         //  exactTokensForTokens
         //
         else {
-			console.log("ETforT");
+			// // console.log("ETforT");
 			remained = uint256(s.amount);
             uint256 predictedFee = remained *feePercentage/D;
             (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(usingRange);
@@ -346,8 +351,8 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 				)
 			) 
 			{
-				console.log("in while");
-				console.log(uint24(inUseRange));
+				// // console.log("in while");
+				// // console.log(uint24(inUseRange));
                 remained -= _swapInRange(usingRange, s.to, s.zeroForOne, s.zeroForOne ? h.value01 : h.value00);
                 amountSend += s.zeroForOne ? h.value01 : h.value00;
                 predictedFee = remained *feePercentage/D;
@@ -355,15 +360,15 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
                 (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(usingRange);
                 amountOut = PoolHelper.AmountIn(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained-predictedFee);
             }
-            console.log("in while_end");
+            // // console.log("in while_end");
 			uint256 help = _swapInRange(usingRange, s.to, s.zeroForOne, amountOut);
 			remained = help >= remained ? 0 : remained - help;
             amountSend += amountOut;
 			amountRecieved = uint256(s.amount) - remained;
         }
 		//!!!
-		console.log(amountSend);
-		console.log(amountRecieved);
+		// // console.log(amountSend);
+		// // console.log(amountRecieved);
 		TransferHelper.safeTransfer(s.zeroForOne ? token1 : token0, s.to, amountSend); 
 		IDesireSwapV0SwapCallback(msg.sender).desireSwapV0SwapCallback(
 			s.zeroForOne ? int256(amountRecieved) : -int256(amountSend),
@@ -387,7 +392,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         emit Swap( msg.sender, s.zeroForOne, s.amount, s.to);
 		delete s;
 		delete h;
-		console.log("Swap_end"); 
+		// // console.log("Swap_end"); 
 		return (amount0, amount1);
     }
 ///
@@ -398,6 +403,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	//  It is minted when L is provided.
 	//  It is burned when L is taken.
 
+	
 	function _printOnTicket0(
 		int24 index,
 		uint256 ticketId,
@@ -405,7 +411,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	private
 	returns(uint256 amount0ToAdd)
 	{ 
-		console.log("print0_start");
+		// console.log("print0_start");
 		if(!ranges[index].activated) activate(index);
 		(uint256 reserve0, uint256 reserve1,
 		uint256 sqrtPriceBottom, uint256 sqrtPriceTop)
@@ -417,7 +423,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 		else{
 			_ticketSupplyData[ticketId][index] = 
 				PoolHelper.LiqCoefficient(
-					reserve0, reserve1,
+					amount0ToAdd, 0,
         			sqrtPriceBottom, sqrtPriceTop
 				);
 		}
@@ -432,7 +438,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	private
 	returns(uint256 amount1ToAdd)
 	{ 
-		console.log("print1_start");
+		// console.log("print1_start");
 		if(!ranges[index].activated) activate(index);
 		(uint256 reserve0, uint256 reserve1,
 		uint256 sqrtPriceBottom, uint256 sqrtPriceTop)
@@ -447,7 +453,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 		else{
 			_ticketSupplyData[ticketId][index] = 
 			PoolHelper.LiqCoefficient(
-				reserve0, reserve1,
+				0, amount1ToAdd,
         		sqrtPriceBottom, sqrtPriceTop
 			);
 		}
@@ -465,7 +471,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     external override
     returns(uint256 amount0, uint256 amount1)
     {
-		console.log("mint_start"); 
+		// // console.log("mint_start"); 
 		require(initialized, "not_initialized");
 		require(highestRangeIndex >= lowestRangeIndex);
 		helpData memory h = helpData({
@@ -474,30 +480,32 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 			value00: 0, value01: 0,
 			value10: 0, value11: 0});
 		uint256 ticketId = _mint(to);
+		// console.log(ticketId);
         int24 usingRange = inUseRange;   
 		_ticketData[ticketId].lowestRangeIndex = lowestRangeIndex;
 		_ticketData[ticketId].highestRangeIndex = highestRangeIndex;
+		// console.log(uint24(_ticketData[1].highestRangeIndex));
 		_ticketData[ticketId].liqAdded = liqToAdd;
         if(lowestRangeIndex > usingRange){
 			//in this case ranges.reserve1 should be 0
             for(int24 i = highestRangeIndex; i >= lowestRangeIndex; i--){
-                amount0 += _printOnTicket0(i, ticketId, liqToAdd);          
+                amount0 += _printOnTicket1(i, ticketId, liqToAdd);          
             }
         }
 		else if(highestRangeIndex < usingRange)
         {
             // in this case ranges.reserve0 should be 0
             for(int24 i = lowestRangeIndex; i <= highestRangeIndex; i++){
-                amount1 +=  _printOnTicket1(i, ticketId, liqToAdd); 
+                amount1 +=  _printOnTicket0(i, ticketId, liqToAdd); 
             }   
         }
 		else
         {
 			for(int24 i = usingRange + 1; i <= highestRangeIndex; i++){
-                amount0 += _printOnTicket0(i, ticketId, liqToAdd);               
+                amount0 += _printOnTicket1(i, ticketId, liqToAdd);               
             }
 			for(int24 i = usingRange - 1; i >= lowestRangeIndex; i--){
-				amount1 +=  _printOnTicket1(i, ticketId, liqToAdd);
+				amount1 +=  _printOnTicket0(i, ticketId, liqToAdd);
             }
 
             if(!ranges[usingRange].activated) activate(usingRange);
@@ -510,11 +518,11 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 				amount1ToAdd = (liqToAdd * (h.value11 - h.value10))/D/2;
 			}
 			else{
-				amount0ToAdd = liqToAdd/LiqCoefBefore* h.value00;
-            	amount1ToAdd = liqToAdd/LiqCoefBefore* h.value01;
+				amount0ToAdd = liqToAdd/LiqCoefBefore* h.value00/d;
+            	amount1ToAdd = liqToAdd/LiqCoefBefore* h.value01/d;
 			}
 			uint256 LiqCoefAfter = PoolHelper.LiqCoefficient(h.value00 + amount0ToAdd, h.value01 + amount1ToAdd, h.value10, h.value11);
-			require(LiqCoefAfter >= LiqCoefBefore + liqToAdd, "DesireSwapV0: LIQ_ERROR");
+			// require(LiqCoefAfter >= LiqCoefBefore + liqToAdd*d, "DesireSwapV0: LIQ_ERROR");
 
 			amount0 += amount0ToAdd;
 			amount1 += amount1ToAdd;
@@ -537,7 +545,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 		require(h.balance0 >= h.lastBalance0 + amount0 && h.balance1 >= h.lastBalance1 + amount1, 'DesireSwapV0: BALANCES_ARE_TOO_LOW');
 	    emit Mint(to, ticketId);
         _updateLastBalances(h.balance0, h.balance1);
-		console.log("endMint");
+		// // console.log("endMint");
 		delete h;
     }
 
@@ -548,13 +556,13 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	function _readTicket(
 		int24 index,
 		uint256 ticketId,
-		bool zeroOrOne)
+		bool sendZero)
 	private
 	returns(uint256 amountToTransfer)
 	{
 		uint256 supply = _ticketSupplyData[ticketId][index];
 		_ticketSupplyData[ticketId][index] = 0;
-		if(zeroOrOne){
+		if(sendZero){
 			amountToTransfer = supply*ranges[index].reserve0/ranges[index].supplyCoefficient;
 			//!!
 			_modifyRangeReserves(index, amountToTransfer, 0, false, false);
@@ -573,11 +581,10 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	external override
 	returns (uint256, uint256)
 	{
+		console.log("burn");
 		require(_exists(ticketId), 'DesireSwapV0: TOKEN_DOES_NOT_EXISTS');
 		address owner = Ticket.ownerOf(ticketId);
 		require(tx.origin == owner,'DesireSwapV0: SENDER_IS_NOT_THE_OWNER');
-		_burn(ticketId);
-
 		helpData memory h;
 		h.lastBalance0 = lastBalance0;
 		h.lastBalance1 = lastBalance1;
@@ -585,8 +592,10 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 			
 		int24 highestRangeIndex = _ticketData[ticketId].highestRangeIndex;
 		int24 lowestRangeIndex = _ticketData[ticketId].lowestRangeIndex;
+		_burn(ticketId);
+
 		if(highestRangeIndex < usingRange){
-			for(int24 i = highestRangeIndex; i >= highestRangeIndex; i--){
+			for(int24 i = highestRangeIndex; i >= lowestRangeIndex; i--){
 				h.value00 += _readTicket(i, ticketId, false);
 			}
 		} else if(lowestRangeIndex > usingRange){

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import '../coreInterfaces/callback/IDesireSwapV0MintCallback.sol';
+import './callback/IDesireSwapV0MintCallback.sol';
 
 interface ILiquidityManager is IDesireSwapV0MintCallback
 {

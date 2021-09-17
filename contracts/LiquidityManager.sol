@@ -51,7 +51,7 @@ contract LiquidityManager is
         uint256 amount1Owed,
         bytes calldata data
     ) external override {
-        console.log("mintCallback_start");
+        // console.log("mintCallback_start");
         MintCallbackData memory decoded = abi.decode(data, (MintCallbackData));
         CallbackValidation.verifyCallback(factory, decoded.poolKey);
         require(decoded.payer == tx.origin);

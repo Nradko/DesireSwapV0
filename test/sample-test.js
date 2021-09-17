@@ -7,9 +7,18 @@ const {BigNumber} = require('@ethersproject/bignumber');
 
 const PoolABI = require('./abis/PoolABI.js').abi
 
+async function consoleBalances(owner, token0, token1){
+	const balanceA = await token0.balanceOf(owner);
+	const balanceB = await token1.balanceOf(owner);
+	console.log("%s balances -> tokenA: %s -> tokenB: %s",owner,balanceA.toString(), balanceB.toString());
+}
+
+
 describe("Deploy", function () {
 	it("TESTing...", async function () {
 		const [owner, A1, A2, A3] = await ethers.getSigners();
+		console.log("owner:%s",owner.address);
+		console.log("A1:%s",A1.address);
 		console.log("A2:%s",A2.address);
 		
 		const Factory = await ethers.getContractFactory("DesireSwapV0Factory");
@@ -28,9 +37,9 @@ describe("Deploy", function () {
 		console.log('liq address: %s', liqManager.address);
 
 		const Token = await ethers.getContractFactory("TestERC20");
-		const tokenA = await Token.deploy("TOKENA", "TB", A1.address, A2.address);
+		const tokenA = await Token.deploy("TOKENA", "TA", A1.address, A2.address);
 		console.log('TA address: %s', tokenA.address);
-		const tokenB = await Token.deploy("TOKENB", "TA", A1.address, A2.address);
+		const tokenB = await Token.deploy("TOKENB", "TB", A1.address, A2.address);
 		console.log('TB address: %s', tokenB.address);
 		const fee = "3000000000000000"
 		await factory.createPool(tokenA.address, tokenB.address, fee);
@@ -53,16 +62,14 @@ describe("Deploy", function () {
 		await pool.initialize("0");
 		rangeInfo = await pool.getRangeInfo("0");
 		const {0: reserve0, 1: reserve1, 2: sB, 3: sT} = rangeInfo;
-		// console.log(reserve0.toString());
-		// console.log(reserve1.toString());
-		// console.log(sB.toString());
-		// console.log(sT.toString());
 
 		const inUse = await pool.inUseRange();
 		console.log(inUse);
 
-		await tokenA.connect(A1).approve(liqManager.address, "10000000000000000000")
-		await tokenB.connect(A1).approve(liqManager.address, "10000000000000000000")
+		await tokenA.connect(A1).approve(liqManager.address, "100000000000000000000")
+		await tokenB.connect(A1).approve(liqManager.address, "100000000000000000000")
+		
+		await consoleBalances(A1.address, tokenA, tokenB);
 
 		await liqManager.connect(A1).supply({
 			"token0": tokenA.address,
@@ -76,10 +83,7 @@ describe("Deploy", function () {
 			"recipient": A1.address,
 			"deadline": "1000000000000000000000000"
 		});
-		// const balance0 = await pool.balance0();
-		// const balance1 = await pool.balance1();
-		// console.log("balance0 %s", balance0)
-		// console.log("balance1 %s", balance1)
+		await consoleBalances(A1.address, tokenA, tokenB);
 
 		await tokenA.connect(A2).approve(router.address, "10000000000000000000")
 		await tokenB.connect(A2).approve(router.address, "10000000000000000000")
@@ -93,11 +97,19 @@ describe("Deploy", function () {
 			"amountOutMinimum": "746568742",
 			"sqrtPriceLimitX96": "0"
 		})
-		// const A2balance0 = await tokenA.balanceOf(A2.address);
-		// const A2balance1 = await tokenB.balanceOf(A2.address);
-		// console.log(A2balance0.toString())
-		// console.log(A2balance1.toString())
+		const data = await pool.getTicketData("1");
+		await liqManager.connect(A1).redeem({
+			"positionId" : "1",
+			"recipient" : A1.address,
+			"deadline" : "1000000000000000",
+		})
+		await consoleBalances(A1.address, tokenA, tokenB);
+		await consoleBalances(A2.address, tokenA, tokenB);
+		const reserves = await pool.getTotalReserves();
+		const balances = await pool.getLastBalances();
+		console.log(balances.toString());
+		console.log(reserves.toString());
 
-
+	
 	});
 });

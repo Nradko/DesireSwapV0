@@ -36,7 +36,7 @@ contract SwapRouter is
         address tokenB,
         uint256 fee
     ) private view returns (IDesireSwapV0Pool) {
-        console.log("getPool_start");
+        // console.log("getPool_start");
         return IDesireSwapV0Pool(IDesireSwapV0Factory(factory).poolAddress(tokenA, tokenB, fee));
     }
 
@@ -51,7 +51,7 @@ contract SwapRouter is
         int256 amount1Delta,
         bytes calldata _data
     ) external override {
-        console.log("swapCallback_start");
+        // console.log("swapCallback_start");
         require(amount0Delta > 0 || amount1Delta > 0); // swaps entirely within 0-liquidity regions are not supported
         SwapCallbackData memory data = abi.decode(_data, (SwapCallbackData));
         (address tokenIn, address tokenOut, uint256 fee) = data.path.decodeFirstPool();
@@ -73,7 +73,7 @@ contract SwapRouter is
                 pay(tokenIn, data.payer, msg.sender, amountToPay);
             }
         }
-        console.log("swapCallback_end");
+        // console.log("swapCallback_end");
     }
 
 
@@ -86,7 +86,7 @@ contract SwapRouter is
         // allow swapping to the router address with address 0
         if (recipient == address(0)) recipient = address(this);
         (address tokenIn, address tokenOut, uint256 fee) = data.path.decodeFirstPool();
-        console.log("exactInputInternal_start");
+        // console.log("exactInputInternal_start");
         bool zeroForOne = tokenIn < tokenOut;
         (int256 amount0, int256 amount1) =
             getPool(tokenIn, tokenOut, fee).swap(
@@ -96,7 +96,7 @@ contract SwapRouter is
                 sqrtPriceLimitX96,
                 abi.encode(data)
             );
-        console.log("exactInputInternal_end");
+        // console.log("exactInputInternal_end");
         return uint256(-(zeroForOne ? amount1 : amount0));
     }
 
@@ -108,7 +108,7 @@ contract SwapRouter is
         checkDeadline(params.deadline)
         returns (uint256 amountOut)
     {
-        console.log("exactInputSingle_start");
+        // console.log("exactInputSingle_start");
         amountOut = exactInputInternal(
             params.amountIn,
             params.recipient,
@@ -116,7 +116,7 @@ contract SwapRouter is
             SwapCallbackData({path: abi.encodePacked(params.tokenIn, params.fee, params.tokenOut), payer: msg.sender})
         );
         require(amountOut >= params.amountOutMinimum, 'Too little received');
-        console.log("exactInputSingle_end");
+        // console.log("exactInputSingle_end");
     }
 
     function exactInput(ExactInputParams memory params)
