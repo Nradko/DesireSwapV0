@@ -4,6 +4,18 @@ pragma solidity ^0.8.0;
 interface IDesireSwapV0PoolView 
 {
 
+    function inUseRange()
+    external view
+    returns(int24);
+
+    function highestActivatedRange()
+    external view
+    returns(int24);
+
+    function lowestActivatedRange()
+    external view
+    returns(int24);
+    
     function initialized()
     external view
     returns(bool);
