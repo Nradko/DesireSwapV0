@@ -51,21 +51,17 @@ contract SwapRouter is
         int256 amount1Delta,
         bytes calldata _data
     ) external override {
-        console.log("callback");
+        console.log("swapCallback_start");
         require(amount0Delta > 0 || amount1Delta > 0); // swaps entirely within 0-liquidity regions are not supported
         SwapCallbackData memory data = abi.decode(_data, (SwapCallbackData));
         (address tokenIn, address tokenOut, uint256 fee) = data.path.decodeFirstPool();
         CallbackValidation.verifyCallback(factory, tokenIn, tokenOut, fee);
-        console.log("callback");
         (bool isExactInput, uint256 amountToPay) =
             amount0Delta > 0
                 ? (tokenIn < tokenOut, uint256(amount0Delta))
                 : (tokenOut < tokenIn, uint256(amount1Delta));
-        console.log("callback");
         if (isExactInput) {
-            console.log("callback");
             pay(tokenIn, data.payer, msg.sender, amountToPay);
-            console.log("callback");
         } else {
             // either initiate the next swap or pay
             if (data.path.hasMultiplePools()) {
@@ -77,7 +73,7 @@ contract SwapRouter is
                 pay(tokenIn, data.payer, msg.sender, amountToPay);
             }
         }
-        console.log("callback_end");
+        console.log("swapCallback_end");
     }
 
 

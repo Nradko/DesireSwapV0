@@ -76,12 +76,10 @@ describe("Deploy", function () {
 			"recipient": A1.address,
 			"deadline": "1000000000000000000000000"
 		});
-		const tR = await pool.getLastBalances();
-		console.log("tR0:%s", tR);
-		const balance0 = await pool.balance0();
-		const balance1 = await pool.balance1();
-		console.log("balance0 %s", balance0)
-		console.log("balance1 %s", balance1)
+		// const balance0 = await pool.balance0();
+		// const balance1 = await pool.balance1();
+		// console.log("balance0 %s", balance0)
+		// console.log("balance1 %s", balance1)
 
 		await tokenA.connect(A2).approve(router.address, "10000000000000000000")
 		await tokenB.connect(A2).approve(router.address, "10000000000000000000")
@@ -95,10 +93,10 @@ describe("Deploy", function () {
 			"amountOutMinimum": "746568742",
 			"sqrtPriceLimitX96": "0"
 		})
-		const A2balance0 = await tokenA.balanceOf(A2.address);
-		const A2balance1 = await tokenB.balanceOf(A2.address);
-		console.log(A2balance0.toString())
-		console.log(A2balance1.toString())
+		// const A2balance0 = await tokenA.balanceOf(A2.address);
+		// const A2balance1 = await tokenB.balanceOf(A2.address);
+		// console.log(A2balance0.toString())
+		// console.log(A2balance1.toString())
 
 
 	});

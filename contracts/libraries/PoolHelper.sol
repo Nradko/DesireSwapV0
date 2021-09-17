@@ -33,7 +33,6 @@ library PoolHelper {
         internal view
         returns (uint256)
     {
-        console.log("LiqCoefficient_start");
         uint256 b = x*sqrt0/D + y*D/sqrt1;
         uint256 sqrt = sqrt(b**2 + 4*x*y*(D-(sqrt0*D)/sqrt1)/D);
         return ((b + sqrt)*D/(2*(D-D*sqrt0/sqrt1)));
@@ -47,7 +46,6 @@ library PoolHelper {
         internal view
         returns(uint256)
     {
-        console.log("amountIn_start");
         uint256 L = LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1); //dim = D
         if(zeroForOne)
             return ( L*L/(reserve1 + L*sqrt0/D - amountOut) - (reserve0 + L*D/sqrt1)); //dim = 0
@@ -63,8 +61,6 @@ library PoolHelper {
         internal view
         returns(uint256)
     {
-        console.log("amountOut_start");
-
         uint256 L = LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1); //dim = D
 
         if (zeroForOne){

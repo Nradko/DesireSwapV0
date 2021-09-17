@@ -223,22 +223,21 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
                 (!zeroForOne && amountOut <= h.value00), 'DesireSwapV0: INSUFFICIENT_POSITION_LIQUIDITY');        
 		
 		uint256 amountInHelp = PoolHelper.AmountIn(zeroForOne, h.value00, h.value01, h.value10, h.value11, amountOut); // do not include fees;
-		uint256 collectedProtocolFee = 0;
         amountIn = amountInHelp*D/(D - feePercentage);
         uint256 collectedFee = amountIn - amountInHelp;
         if (protocolFeeIsOn)
-            collectedProtocolFee = (collectedFee * protocolFeePart)/D;
-        // token0 for token1 // token0 in; token1 out;
-		amountInHelp = amountIn - collectedProtocolFee;
+			amountInHelp = amountIn - (collectedFee * protocolFeePart)/D; //amountIn - protocolFee. It is amount that is added to reserve
 		if(zeroForOne) {
             //??
+			console.log(PoolHelper.LiqCoefficient(h.value00 + amountInHelp, h.value01 - amountOut, h.value10, h.value11));
+			console.log(PoolHelper.LiqCoefficient(h.value00, h.value01, h.value10, h.value11));
 			require(PoolHelper.LiqCoefficient(h.value00 + amountInHelp, h.value01 - amountOut, h.value10, h.value11)
 				>= PoolHelper.LiqCoefficient(h.value00, h.value01, h.value10, h.value11),
              'DesireSwapV0: LIQ_COEFFICIENT_IS_TOO_LOW'); //assure that after swap there is more o r equal liquidity. If PoolHelper.AmountIn works correctly it can be removed.
             //!!
             _modifyRangeReserves(
                 index,
-                amountIn - collectedProtocolFee,
+                amountInHelp,
                 amountOut, true, false);
         }
         // token1 for token0 // token1 in; token0 out;
@@ -251,12 +250,10 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
             _modifyRangeReserves(
                 index,
                 amountOut,
-                amountIn - collectedProtocolFee, false, true);
+                amountInHelp, false, true);
         }
 		emit SwapInRange(msg.sender, index, zeroForOne, amountIn, amountOut, to);
 		delete h;
-		console.log(amountIn);
-		console.log(amountOut);
 		console.log("swapInRange_stop");
 
     }
@@ -361,7 +358,6 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
             console.log("in while_end");
 			uint256 help = _swapInRange(usingRange, s.to, s.zeroForOne, amountOut);
 			remained = help >= remained ? 0 : remained - help;
-			console.log("cc");
             amountSend += amountOut;
 			amountRecieved = uint256(s.amount) - remained;
         }
@@ -411,20 +407,10 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 	{ 
 		console.log("print0_start");
 		if(!ranges[index].activated) activate(index);
-		console.log("activated");
 		(uint256 reserve0, uint256 reserve1,
 		uint256 sqrtPriceBottom, uint256 sqrtPriceTop)
 			= getRangeInfo(index);
-		console.log("gotInfo");
-		console.log(reserve0);
-		console.log(reserve1);
-		console.log(sqrtPriceBottom);
-		console.log(sqrtPriceTop);
-		console.log(liqToAdd);
-		console.log(uint24(index));
-
 		amount0ToAdd = liqToAdd *D * (sqrtPriceTop - sqrtPriceBottom)/(sqrtPriceBottom*sqrtPriceTop);
-		console.log(amount0ToAdd);
 		if(ranges[index].supplyCoefficient != 0){
 			_ticketSupplyData[ticketId][index] = ranges[index].supplyCoefficient*amount0ToAdd/reserve0;
 		}
