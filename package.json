@@ -3,7 +3,7 @@
   "scripts": {
     "solhint": "./node_modules/.bin/solhint -f table contracts/**/*.sol",
     "prettier:solidity": "./node_modules/.bin/prettier --write contracts/**/*.sol",
-    "test": "npx hardhat test"
+    "test": "hardhat test"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
@@ -26,7 +26,8 @@
   },
   "husky": {
     "hooks": {
-      "pre-push": "npm run solhint prettier:solidity"
+      "pre-commit": "npm run prettier:solidity",
+      "pre-push": "npm run solhint test"
     }
   }
 }
