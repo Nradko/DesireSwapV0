@@ -1,0 +1,12 @@
+{
+  "extends": "solhint:recommended",
+  "rules": {
+    "avoid-throw": "off",
+    "avoid-suicide": "warn",
+    "avoid-sha3": "warn",
+    "compiler-version": ["off", "^0.7.3"],
+    "quotes": ["error", "single"],
+    "reason-string": "off"
+  },
+  "plugins": ["prettier"]
+}
