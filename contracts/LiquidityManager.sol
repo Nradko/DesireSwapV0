@@ -72,32 +72,6 @@ contract LiquidityManager is ILiquidityManager, PeripheryImmutableState, Periphe
     return nextPositionId++;
   }
 
-  function supplyParams(
-    address token0,
-    address token1,
-    uint256 fee,
-    int24 lowestRangeIndex,
-    int24 highestRangeIndex,
-    uint256 liqToAdd,
-    uint256 amount0Max,
-    uint256 amount1Max,
-    address recipient,
-    uint256 deadline
-  ) external pure returns (SupplyParams memory params) {
-    params = SupplyParams({
-      token0: token0,
-      token1: token1,
-      fee: fee,
-      lowestRangeIndex: lowestRangeIndex,
-      highestRangeIndex: highestRangeIndex,
-      liqToAdd: liqToAdd,
-      amount0Max: amount0Max,
-      amount1Max: amount1Max,
-      recipient: recipient,
-      deadline: deadline
-    });
-  }
-
   function supply(SupplyParams calldata params)
     external
     payable
