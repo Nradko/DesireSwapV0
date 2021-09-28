@@ -8,30 +8,48 @@ interface IDesireSwapV0Factory {
   event CollectorChanged(address oldFeeCollector, address newFeeCollector);
   event SwapRouterChanged(address odlSwapRouter, address newSwapRouter);
 
+  /// @return the addres of rhe owner of factory
   function owner() external view returns (address);
 
+  /// @return the feeCollector contract address. Fees are colleected from pools to this contract
   function feeCollector() external view returns (address);
 
+  /// @return swapRouter contract address.
   function swapRouter() external view returns (address);
 
+  /// @return the deployers contract address
   function deployerAddress() external view returns (address);
 
+  /// @notice whitelisted is a map (address => bool) storing infromation if a given address is whitelisted to interact with swap router
+  /// @param () to be checked if is whitelisted to interact with swap router(not importanf for external addresses)
+  /// @return true if contract can interact with swapRouter
   function whitelisted(address) external view returns (bool);
 
+  /// @notice map stroing SqrtRamgeMultiplier assigned to pool with fee
+  /// @param () fee of the pool
+  /// @return sqrtRangeMultiplier of pool
   function feeToSqrtRangeMultiplier(uint256 fee) external view returns (uint256);
 
+  /// @param () 1st ERC20 token in pool
+  /// @param () 2nd ERC20 token in pool
+  /// @param () fee of the pool
+  /// @return adress of the pool
   function poolAddress(
     address,
     address,
     uint256
   ) external view returns (address);
 
+  /// @notice list of all the created pools in order of creation
   function poolList(uint256) external view returns (address);
 
+  /// @return number of existing pools
   function poolCount() external view returns (uint256);
 
-  function addPoolType(uint256 _fee, uint256 _sqrtRangeMultiplier) external;
+  /// @notice creates new pool type with _fee and _sqrtRangeMultiplier
+  function addPoolType(uint256 fee_, uint256 sqrtRangeMultiplier_) external;
 
+  /// @notice deploys a new pool with given parameters. If one with same tokenA_, tokenB_, fee_ haven't been created yet
   function createPool(
     address tokenA_,
     address tokenB_,
