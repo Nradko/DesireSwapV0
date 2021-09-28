@@ -430,11 +430,19 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     int24 highestRangeIndex,
     uint256 liqToAdd,
     bytes calldata data
-  ) external override returns (uint256 amount0, uint256 amount1) {
+  )
+    external
+    override
+    returns (
+      uint256 ticketId,
+      uint256 amount0,
+      uint256 amount1
+    )
+  {
     require(initialized, 'DSV0POOL(mint): not_initialized');
     require(highestRangeIndex >= lowestRangeIndex, 'DSV0POOL(mint): Indexes');
     helpData memory h = helpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: balance0(), balance1: balance1(), value00: 0, value01: 0, value10: 0, value11: 0});
-    uint256 ticketId = getNextTicketId();
+    ticketId = getNextTicketId();
     _safeMint(to, _nextTicketId++);
     int24 usingRange = inUseRange;
     _ticketData[ticketId].lowestRangeIndex = lowestRangeIndex;
@@ -560,7 +568,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     //???
     require(h.balance0 >= h.lastBalance0 - h.value00 && h.balance1 >= h.lastBalance1 - h.value01, 'DSV0POOL(burn): BALANCES_ARE_TO0_LOW');
 
-    emit Burn(ownerOf(ticketId), ticketId, h.value00, h.value01);
+    emit Burn(to, ticketId, h.value00, h.value01);
     _burn(ticketId);
     //!!!
     _updateLastBalances(h.balance0, h.balance1);

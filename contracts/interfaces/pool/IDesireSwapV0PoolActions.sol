@@ -18,7 +18,13 @@ interface IDesireSwapV0PoolActions {
     int24 highestRangeIndex,
     uint256 liqToAdd,
     bytes calldata data
-  ) external returns (uint256 amount0, uint256 amount1);
+  )
+    external
+    returns (
+      uint256 ticketId,
+      uint256 amount0,
+      uint256 amount1
+    );
 
   function burn(address to, uint256 ticketId) external returns (uint256, uint256);
 
