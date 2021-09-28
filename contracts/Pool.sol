@@ -150,11 +150,11 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     if (isSwap) {
       if (ranges[index].reserve0 == 0 && ranges[index + 1].activated) {
         inUseRange++;
-        emit InUseRangeChanged(index + 1);
+        emit InUseRangeChanged(index - 1, index);
       }
       if (ranges[index].reserve1 == 0 && ranges[index - 1].activated) {
         inUseRange--;
-        emit InUseRangeChanged(index - 1);
+        emit InUseRangeChanged(index + 1, index);
       }
     }
   }
@@ -217,7 +217,6 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 
   function _swapInRange(
     int24 index,
-    address to,
     bool zeroForOne,
     uint256 amountOut
   ) private returns (uint256 amountIn) {
@@ -263,7 +262,6 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       require(amountOut <= h.value00, 'DSV0POOL(swapInRange): ETfT error');
       _modifyRangeReserves(index, amountOut, amountInHelp, false, true, true);
     }
-    emit SwapInRange(msg.sender, index, zeroForOne, amountIn, amountOut, to);
     delete h;
   }
 
@@ -312,12 +310,12 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         remained > usingReserve &&
         ((s.zeroForOne ? sqrtPriceLimit > (ranges[usingRange].sqrtPriceBottom * sqrtRangeMultiplier) / D : sqrtPriceLimit < ranges[usingRange].sqrtPriceBottom) || sqrtPriceLimit == 0)
       ) {
-        amountRecieved += _swapInRange(usingRange, s.to, s.zeroForOne, usingReserve);
+        amountRecieved += _swapInRange(usingRange, s.zeroForOne, usingReserve);
         remained -= usingReserve;
         usingRange = inUseRange;
         usingReserve = s.zeroForOne ? ranges[usingRange].reserve1 : ranges[usingRange].reserve0;
       }
-      amountRecieved += _swapInRange(usingRange, s.to, s.zeroForOne, remained);
+      amountRecieved += _swapInRange(usingRange, s.zeroForOne, remained);
       amountSend = uint256(-s.amount);
     }
     //
@@ -333,14 +331,14 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         amountOut > (s.zeroForOne ? h.value01 : h.value00) &&
         ((s.zeroForOne ? sqrtPriceLimit > (ranges[usingRange].sqrtPriceBottom * sqrtRangeMultiplier) / D : sqrtPriceLimit < ranges[usingRange].sqrtPriceBottom) || sqrtPriceLimit == 0)
       ) {
-        remained -= _swapInRange(usingRange, s.to, s.zeroForOne, s.zeroForOne ? h.value01 : h.value00);
+        remained -= _swapInRange(usingRange, s.zeroForOne, s.zeroForOne ? h.value01 : h.value00);
         amountSend += s.zeroForOne ? h.value01 : h.value00;
         predictedFee = (remained * feePercentage) / D;
         usingRange = inUseRange;
         (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(usingRange);
         amountOut = PoolHelper.AmountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained - predictedFee);
       }
-      uint256 help = _swapInRange(usingRange, s.to, s.zeroForOne, amountOut);
+      uint256 help = _swapInRange(usingRange, s.zeroForOne, amountOut);
       require(help <= remained, 'DSV0POOL(swap): Try different amountIN');
       remained -= help;
       amountSend += amountOut;
@@ -357,14 +355,16 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     } else {
       require(h.balance1 >= h.lastBalance1 + amountRecieved && h.balance0 >= h.lastBalance0 - amountSend, 'DSV0POOL(swap): BALANCES_ARE_T0O_LOW');
     }
-
-    int256 amount0 = int256(h.balance0) - int256(h.lastBalance0);
-    int256 amount1 = int256(h.balance1) - int256(h.lastBalance1);
     _updateLastBalances(h.balance0, h.balance1);
-    emit Swap(msg.sender, s.zeroForOne, s.amount, s.to);
-    delete s;
     delete h;
-    return (amount0, amount1);
+    if (s.zeroForOne) {
+      emit Swap(block.number, s.zeroForOne, int256(amountRecieved), -int256(amountSend), msg.sender, s.to);
+      delete s;
+      return (int256(amountRecieved), -int256(amountSend));
+    }
+    delete s;
+    emit Swap(block.number, s.zeroForOne, -int256(amountSend), int256(amountRecieved), msg.sender, s.to);
+    return (-int256(amountSend), int256(amountRecieved));
   }
 
   ///
@@ -381,7 +381,12 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     uint256 liqToAdd
   ) private returns (uint256 amount0ToAdd) {
     if (!ranges[index].activated) activate(index);
-    (uint256 reserve0, /*unused*/ , uint256 sqrtPriceBottom, uint256 sqrtPriceTop) = getRangeInfo(index);
+    (
+      uint256 reserve0, /*unused*/
+      ,
+      uint256 sqrtPriceBottom,
+      uint256 sqrtPriceTop
+    ) = getRangeInfo(index);
     amount0ToAdd = (liqToAdd * D * (sqrtPriceTop - sqrtPriceBottom)) / (sqrtPriceBottom * sqrtPriceTop);
     if (ranges[index].supplyCoefficient != 0) {
       _ticketSupplyData[ticketId][index] = (ranges[index].supplyCoefficient * amount0ToAdd) / reserve0;
@@ -399,7 +404,13 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     uint256 liqToAdd
   ) private returns (uint256 amount1ToAdd) {
     if (!ranges[index].activated) activate(index);
-    (/*unused*/, uint256 reserve1, uint256 sqrtPriceBottom, uint256 sqrtPriceTop) = getRangeInfo(index);
+    (
+      ,
+      /*unused*/
+      uint256 reserve1,
+      uint256 sqrtPriceBottom,
+      uint256 sqrtPriceTop
+    ) = getRangeInfo(index);
 
     amount1ToAdd = (liqToAdd * (sqrtPriceTop - sqrtPriceBottom)) / D;
 
@@ -478,7 +489,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     h.balance0 = balance0();
     h.balance1 = balance1();
     require(h.balance0 >= h.lastBalance0 + amount0 && h.balance1 >= h.lastBalance1 + amount1, 'DSV0POOL(mint): BALANCES_ARE_TOO_LOW');
-    emit Mint(to, ticketId);
+    emit Mint(to, ticketId, amount0, amount1);
     _updateLastBalances(h.balance0, h.balance1);
     delete h;
   }
@@ -549,7 +560,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     //???
     require(h.balance0 >= h.lastBalance0 - h.value00 && h.balance1 >= h.lastBalance1 - h.value01, 'DSV0POOL(burn): BALANCES_ARE_TO0_LOW');
 
-    emit Burn(ownerOf(ticketId), ticketId);
+    emit Burn(ownerOf(ticketId), ticketId, h.value00, h.value01);
     _burn(ticketId);
     //!!!
     _updateLastBalances(h.balance0, h.balance1);
