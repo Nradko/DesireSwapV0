@@ -358,12 +358,12 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     _updateLastBalances(h.balance0, h.balance1);
     delete h;
     if (s.zeroForOne) {
-      emit Swap(block.number, s.zeroForOne, int256(amountRecieved), -int256(amountSend), msg.sender, s.to);
+      emit Swap(msg.sender, s.to, block.number, int256(amountRecieved), -int256(amountSend));
       delete s;
       return (int256(amountRecieved), -int256(amountSend));
     }
     delete s;
-    emit Swap(block.number, s.zeroForOne, -int256(amountSend), int256(amountRecieved), msg.sender, s.to);
+    emit Swap(msg.sender, s.to, block.number, -int256(amountSend), int256(amountRecieved));
     return (-int256(amountSend), int256(amountRecieved));
   }
 
@@ -497,7 +497,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     h.balance0 = balance0();
     h.balance1 = balance1();
     require(h.balance0 >= h.lastBalance0 + amount0 && h.balance1 >= h.lastBalance1 + amount1, 'DSV0POOL(mint): BALANCES_ARE_TOO_LOW');
-    emit Mint(to, ticketId, amount0, amount1);
+    emit Mint(msg.sender, to, lowestRangeIndex, highestRangeIndex, ticketId, liqToAdd, amount0, amount1);
     _updateLastBalances(h.balance0, h.balance1);
     delete h;
   }
@@ -568,7 +568,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     //???
     require(h.balance0 >= h.lastBalance0 - h.value00 && h.balance1 >= h.lastBalance1 - h.value01, 'DSV0POOL(burn): BALANCES_ARE_TO0_LOW');
 
-    emit Burn(to, ticketId, h.value00, h.value01);
+    emit Burn(ownerOf(ticketId), to, lowestRangeIndex, highestRangeIndex, ticketId, h.value00, h.value01);
     _burn(ticketId);
     //!!!
     _updateLastBalances(h.balance0, h.balance1);

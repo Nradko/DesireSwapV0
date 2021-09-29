@@ -3,12 +3,28 @@ pragma solidity ^0.8.0;
 
 import './libraries/PoolHelper.sol';
 import './interfaces/IDesireSwapV0Pool.sol';
+import './interfaces/IDesireSwapV0Factory.sol';
+import './interfaces/ILiquidityManagerHelper.sol';
 
 import 'hardhat/console.sol';
 
-contract LiquidityManagerHelper {
+contract LiquidityManagerHelper is ILiquidityManagerHelper {
   uint256 private constant D = 10**18;
   uint256 private constant d = 10**9;
+
+  address public immutable factory;
+
+  function getPoolAddress(
+    address tokenA,
+    address tokenB,
+    uint256 fee
+  ) private view returns (address) {
+    return IDesireSwapV0Factory(factory).poolAddress(tokenA, tokenB, fee);
+  }
+
+  constructor(address factory_) {
+    factory = factory_;
+  }
 
   struct RangeInfo {
     uint256 reserve0;
@@ -38,11 +54,14 @@ contract LiquidityManagerHelper {
   }
 
   function token0Supply(
-    address poolAddress,
+    address tokenA,
+    address tokenB,
+    uint256 fee,
     uint256 amount0,
     int24 lowestRangeIndex,
     int24 highestRangeIndex
-  ) public view returns (uint256 liqToAdd, uint256 amount1) {
+  ) public view override returns (uint256 liqToAdd, uint256 amount1) {
+    address poolAddress = getPoolAddress(tokenA, tokenB, fee);
     (uint256 amount0Help, uint256 amount1Help) = supply(poolAddress, lowestRangeIndex, highestRangeIndex);
     // console.log(amount0Help);
     // console.log(amount1Help);
@@ -53,11 +72,14 @@ contract LiquidityManagerHelper {
   }
 
   function token1Supply(
-    address poolAddress,
+    address tokenA,
+    address tokenB,
+    uint256 fee,
     uint256 amount1,
     int24 lowestRangeIndex,
     int24 highestRangeIndex
-  ) public view returns (uint256 liqToAdd, uint256 amount0) {
+  ) public view override returns (uint256 liqToAdd, uint256 amount0) {
+    address poolAddress = getPoolAddress(tokenA, tokenB, fee);
     (uint256 amount0Help, uint256 amount1Help) = supply(poolAddress, lowestRangeIndex, highestRangeIndex);
     // console.log(amount0Help);
     // console.log(amount1Help);
