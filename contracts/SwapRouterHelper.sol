@@ -1,4 +1,11 @@
-// SPDX-License-Identifier: UNLICENSED
+/*******************************************************
+ * Copyright (C) 2021-2022 Konrad Wierzbik <desired.desire@protonmail.com>
+ *
+ * This file is part of DesireSwapProject.
+ *
+ * DesireSwapProject can not be copied and/or distributed without the express
+ * permission of Konrad Wierzbik
+ *******************************************************/
 pragma solidity ^0.8.0;
 
 import './libraries/PoolHelper.sol';
