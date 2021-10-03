@@ -134,6 +134,22 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     _activated = ranges[index].activated;
   }
 
+  function slot0()
+    public
+    view
+    override
+    returns (
+      int24 usingRange,
+      uint256 currentPrice,
+      uint256 L
+    )
+  {
+    usingRange = inUseRange;
+    (uint256 reserve0, uint256 reserve1, uint256 sqrt0, uint256 sqrt1) = getRangeInfo(usingRange);
+    L = PoolHelper.LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
+    currentPrice = ((L * L * D) / (reserve0 + (L * D) / sqrt1)**2);
+  }
+
   ///
   /// private
   ///

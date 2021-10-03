@@ -5,6 +5,7 @@ pragma abicoder v2;
 import './base/PeripheryValidation.sol';
 import './base/PeripheryImmutableState.sol';
 import './base/PeripheryPayments.sol';
+import './base/Multicall.sol';
 
 import './interfaces/ISwapRouter.sol';
 
@@ -13,7 +14,7 @@ import './libraries/Path.sol';
 
 import 'hardhat/console.sol';
 
-contract SwapRouter is ISwapRouter, PeripheryImmutableState, PeripheryValidation, PeripheryPayments {
+contract SwapRouter is ISwapRouter, PeripheryImmutableState, PeripheryValidation, PeripheryPayments, Multicall {
   using Path for bytes;
 
   /// @dev Used as the placeholder value for amountInCached, because the computed amount in for an exact output swap
