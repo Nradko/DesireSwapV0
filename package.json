@@ -6,7 +6,9 @@
     "prettier:solidityMain": "./node_modules/.bin/prettier --write contracts/*.sol",
     "test": "hardhat test",
     "compile": "hardhat compile",
-    "prepare": "npx husky install"
+    "prepare": "npx husky install",
+    "pre-commit": "npx hardhat compile && npm run prettier:solidity",
+    "pre-push": "npm run solhint test"
   },
   "husky": {
     "hooks": {
