@@ -4,7 +4,12 @@
     "solhint": "./node_modules/.bin/solhint -f table contracts/**/*.sol",
     "prettier:solidity": "./node_modules/.bin/prettier --write contracts/**/*.sol",
     "prettier:solidityMain": "./node_modules/.bin/prettier --write contracts/*.sol",
-    "test": "hardhat test"
+    "test": "hardhat test",
+    "compile": "hardhat compile",
+    "localNode": "hardhat node --network localhost",
+    "deploy": "npm run deployLocal && npm run deployMulticall",
+    "deployLocal": "hardhat run --network localhost .\\scripts\\deploy.js",
+    "deployMulticall": "node .\\scripts\\deployMulticall.ts"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
