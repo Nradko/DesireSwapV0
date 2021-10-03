@@ -8,6 +8,12 @@
     "compile": "hardhat compile",
     "prepare": "npx husky install"
   },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npx hardhat compile && npm run prettier:solidity",
+      "pre-push": "npm run solhint test"
+    }
+  },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
@@ -25,7 +31,7 @@
     "ethers": "^5.4.6",
     "hardhat": "^2.6.4",
     "hardhat-contract-sizer": "^2.0.3",
-    "husky": "4.2.1",
+    "husky": "4.3.0",
     "prettier": "^2.4.0",
     "prettier-plugin-solidity": "^1.0.0-beta.18",
     "solhint": "^3.3.6",
@@ -36,11 +42,5 @@
     "@ethersproject/abi": "^5.4.1",
     "@ethersproject/bignumber": "^5.4.1",
     "@openzeppelin/contracts": "^4.3.1"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "npx hardhat compile && npm run prettier:solidity",
-      "pre-push": "npm run solhint test"
-    }
   }
 }
