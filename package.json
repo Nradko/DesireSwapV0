@@ -10,12 +10,6 @@
     "pre-commit": "npx hardhat compile && npm run prettier:solidity",
     "pre-push": "npm run solhint test"
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "npx hardhat compile && npm run prettier:solidity",
-      "pre-push": "npm run solhint test"
-    }
-  },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
