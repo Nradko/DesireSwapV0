@@ -40,7 +40,7 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "npxm run huskyPreCommit",
+      "pre-commit": "npm run huskyPreCommit",
       "pre-push": "npm run solhint test"
     }
   }
