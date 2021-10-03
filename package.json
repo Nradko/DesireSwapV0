@@ -5,11 +5,7 @@
     "prettier:solidity": "./node_modules/.bin/prettier --write contracts/**/*.sol",
     "prettier:solidityMain": "./node_modules/.bin/prettier --write contracts/*.sol",
     "test": "hardhat test",
-    "compile": "hardhat compile",
-    "localNode": "hardhat node --network localhost",
-    "deploy": "npm run deployLocal && npm run deployMulticall",
-    "deployLocal": "hardhat run --network localhost .\\scripts\\deploy.js",
-    "deployMulticall": "node .\\scripts\\deployMulticall.ts"
+    "compile": "hardhat compile"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
@@ -42,7 +38,7 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "npm run prettier:solidity",
+      "pre-commit": "npx hardhat compile && npm run prettier:solidity",
       "pre-push": "npm run solhint test"
     }
   }
