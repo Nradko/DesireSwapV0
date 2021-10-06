@@ -55,7 +55,14 @@ describe("LiquidityManagerHelper", function () {
             const users = [owner, A1, A2, A3, A4, A5, A6, A7, A8, A9];
             console.log("owner:%s",owner.address);
             
-            const Deployer = await ethers.getContractFactory("PoolDeployer");
+            const TickMath = await ethers.getContractFactory("TickMath");
+            const tickMath = await TickMath.deploy();
+            
+            const Deployer = await ethers.getContractFactory("PoolDeployer",{
+                libraries:{
+                    TickMath: tickMath.address
+                }
+            });
             const deployer = await Deployer.deploy();
             console.log("deployer: %s", deployer.address)
             
@@ -88,7 +95,11 @@ describe("LiquidityManagerHelper", function () {
             console.log("tu")
             const poolAddress = await factory.poolAddress(tokenA.address, tokenB.address, fee);
             console.log('Pool address: %s', poolAddress);
-		    const Pool = await ethers.getContractFactory("DesireSwapV0Pool");
+		    const Pool = await ethers.getContractFactory("DesireSwapV0Pool",{
+                libraries:{
+                    TickMath: tickMath.address
+                }
+            });
 		    const pool = await Pool.attach(poolAddress);
         console.log("done")
 
