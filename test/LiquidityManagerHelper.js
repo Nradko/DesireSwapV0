@@ -76,7 +76,7 @@ describe("LiquidityManagerHelper", function () {
             console.log('liq address: %s', liqManager.address);
 
             const LMHelper = await ethers.getContractFactory("LiquidityManagerHelper");
-            const lmHelper = await LMHelper.deploy();
+            const lmHelper = await LMHelper.deploy(factory.address);
 
             const Token = await ethers.getContractFactory("TestERC20");
             const tokenA = await Token.deploy("TOKENA", "TA", owner.address);
@@ -85,6 +85,7 @@ describe("LiquidityManagerHelper", function () {
             console.log('TB address: %s', tokenB.address);
 
             await factory.createPool(tokenA.address, tokenB.address, fee, "DesireSwap LP: TOKENA-TOKENB","DS_TA-TB_LP");
+            console.log("tu")
             const poolAddress = await factory.poolAddress(tokenA.address, tokenB.address, fee);
             console.log('Pool address: %s', poolAddress);
 		    const Pool = await ethers.getContractFactory("DesireSwapV0Pool");
@@ -130,7 +131,7 @@ describe("LiquidityManagerHelper", function () {
                 for(let step = 0; step < 2; step++){
                     let provider = users[2*i+1];
                     
-                    let data= await lmHelper.token1Supply(poolAddress, BigNumber.from("100000000").div(10).toString(), -2*(i+1)*(step+1) + initialized, 2*(i+1)*(step+1) + initialized);
+                    let data= await lmHelper.token1Supply(tokenA.address, tokenB.address, fee, BigNumber.from("100000000").div(10).toString(), -2*(i+1)*(step+1) + initialized, 2*(i+1)*(step+1) + initialized);
                     let {0:liqToAdd, 1: amount1} = data;
                     console.log(liqToAdd.toString());
 

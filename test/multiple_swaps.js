@@ -77,7 +77,7 @@ describe("Multiple_swaps", function () {
             console.log('liq address: %s', liqManager.address);
 
             const LMHelper = await ethers.getContractFactory("LiquidityManagerHelper");
-            const lmHelper = await LMHelper.deploy();
+            const lmHelper = await LMHelper.deploy(factory.address);
 
             const Token = await ethers.getContractFactory("TestERC20");
             const tokenA = await Token.deploy("TOKENA", "TA", owner.address);
@@ -115,7 +115,7 @@ describe("Multiple_swaps", function () {
             await tokenA.connect(owner).approve(router.address, tokenSupply);
             await tokenB.connect(owner).approve(router.address, tokenSupply);
 
-        for(let i = 0; i < 4; i++){
+        for(let i = 0; i < 2; i++){
             let provider = users[2*i+1];
             let swapper = users[2*i+2];
             
@@ -179,7 +179,7 @@ describe("Multiple_swaps", function () {
         await consoleReserves(pool);
 
         let reserve;
-        for(let step  =0; step < 5; step++){
+        for(let step  =0; step < 2; step++){
             console.log("swap_cycle: %s", step);
             reserve = (await totalReserve1(pool)).toString();
             await router.connect(owner).exactOutputSingle({
@@ -222,18 +222,13 @@ describe("Multiple_swaps", function () {
         }
 
 
-        for(let i = 0; i < 4; i++){
+        for(let i = 0; i < 2; i++){
             let provider = users[2*i+1];
             for( let step = 0; step < 2; step++){
                 console.log("remove %s:%s", i, step)
-                let tokenId = await pool.getAddressTickets(provider.address, 1 + step);
-                if(tokenId != 0){
-                    await pool.connect(provider).approve(liqManager.address, tokenId);
-                    await liqManager.connect(provider).redeem({
-                        "positionId" : 2*i + step+1,
-                        "recipient" : provider.address,
-                        "deadline" : "1000000000000000",
-                    });
+                let ticketId = await pool.getAddressTickets(provider.address, 1 + step);
+                if(ticketId != 0){
+                    await pool.connect(provider).burn( provider.address, ticketId);
                 }
             }
         }

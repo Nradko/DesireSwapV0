@@ -78,10 +78,10 @@ describe("SwapRouterHelper", function () {
             console.log('liq address: %s', liqManager.address);
 
             const SRHelper = await ethers.getContractFactory("SwapRouterHelper");
-            const srHelper = await SRHelper.deploy();
+            const srHelper = await SRHelper.deploy(factory.address);
 
             const LMHelper = await ethers.getContractFactory("LiquidityManagerHelper");
-            const lmHelper = await LMHelper.deploy();
+            const lmHelper = await LMHelper.deploy(factory.address);
 
             const Token = await ethers.getContractFactory("TestERC20");
             const tokenA = await Token.deploy("TOKENA", "TA", owner.address);
@@ -142,7 +142,7 @@ describe("SwapRouterHelper", function () {
             "deadline": "1000000000000000000000000"
         });
         console.log("firstSupplied");
-        let data= await lmHelper.token0Supply(poolAddress, BigNumber.from("1000000000000000000000").toString(), -100 + initialized, 100 + initialized);
+        let data= await lmHelper.token0Supply(tokenA.address, tokenB.address, fee, BigNumber.from("1000000000000000000000").toString(), -100 + initialized, 100 + initialized);
         let {0:liqToAdd, 1: amount1toAdd} = data;
         console.log(liqToAdd.toString());
 
@@ -160,7 +160,7 @@ describe("SwapRouterHelper", function () {
         });
         await consoleReserves(pool);
 
-        data = await srHelper.swapQuoter(pool.address, "true", "100000000000000000000", "0");
+        data = await srHelper.swapQuoter(tokenA.address, tokenB.address, fee, "true", "100000000000000000000", "0");
         let {0:amount0, 1:amount1} = data;
         console.log("amount0: %s   amount1:%s", amount0.toString(), amount1.toString());
         await consoleBalances(A1.address, tokenA, tokenB)
