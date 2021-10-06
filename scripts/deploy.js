@@ -1,10 +1,10 @@
-const { BigNumber } = require("@ethersproject/bignumber");
-const { ethers } = require("hardhat");
+const { BigNumber } = require('@ethersproject/bignumber');
+const { ethers } = require('hardhat');
 
-const tokenSupply = "100000000000000000000000000000000";
-const fee = "500000000000000"
-const initialized = 0
-const activate = 100
+const tokenSupply = '100000000000000000000000000000000';
+const fee = '500000000000000';
+const initialized = 0;
+const activate = 100;
 
 async function main() {
     try{
@@ -103,11 +103,32 @@ async function main() {
     } catch (err) {
         console.error('Rejection handled.',err);
     }
+    await tokenA.connect(owner).approve(router.address, tokenSupply);
+    await tokenB.connect(owner).approve(router.address, tokenSupply);
+    console.log('approved');
+
+    console.log('firstSupply');
+    await liqManager.connect(A9).supply({
+      token0: tokenA.address,
+      token1: tokenB.address,
+      fee: fee,
+      lowestRangeIndex: 0 + initialized,
+      highestRangeIndex: 0 + initialized,
+      liqToAdd: '10000000',
+      amount0Max: '100000000000000000000000',
+      amount1Max: '10000000000000000000000000',
+      recipient: A9.address,
+      deadline: '1000000000000000000000000',
+    });
+    console.log('firstSupply_done');
+  } catch (err) {
+    console.error('Rejection handled.', err);
+  }
 }
 
 main()
-    .then(() => process.exit(0))
-    .catch((error) => {
+  .then(() => process.exit(0))
+  .catch((error) => {
     console.error(error);
     process.exit(1);
-    });
+  });

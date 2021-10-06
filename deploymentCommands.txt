@@ -1,0 +1,3 @@
+"localNode": "hardhat node --network localhost",
+"deployLocal": "npx hardhat run --network localhost .\\scripts\\deploy.js",
+"deployMulticall": "npx hardhat run .\\scripts\\deployMulticall.js"
