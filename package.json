@@ -8,8 +8,8 @@
     "compile": "hardhat compile",
     "localNode": "hardhat node --network localhost",
     "deploy": "npm run deployLocal && npm run deployMulticall",
-    "deployLocal": "hardhat run --network localhost .\\scripts\\deploy.js",
-    "deployMulticall": "node .\\scripts\\deployMulticall.ts"
+    "deployLocal": "hardhat run --network localhost .//scripts//deploy.js",
+    "deployMulticall": "node .//scripts//deployMulticall.ts"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
