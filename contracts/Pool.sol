@@ -11,11 +11,13 @@ pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import './base/Ticket.sol';
+
 import './libraries/PoolHelper.sol';
 import './libraries/TransferHelper.sol';
+import './libraries/TickMath.sol';
+
 import './interfaces/IDesireSwapV0Factory.sol';
 import './interfaces/IDesireSwapV0Pool.sol';
-
 import './interfaces/callback/IDesireSwapV0MintCallback.sol';
 import './interfaces/callback/IDesireSwapV0SwapCallback.sol';
 import './interfaces/callback/IDesireSwapV0FlashCallback.sol';
@@ -34,6 +36,8 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   uint256 private constant d = 10**9;
   uint256 private constant D = 10**18;
   uint256 private constant DD = 10**36;
+  uint256 private constant tickSize = 1000049998750062496;
+  uint256 private immutable ticksInRange;
   uint256 public immutable override sqrtRangeMultiplier; // example: 100100000.... is 1.001 (* 10**)
   uint256 public immutable override feePercentage; //  0 fee is 0 // 100% fee is 1* 10**18;
   uint256 public override protocolFeePart = 2 * 10**17;
@@ -62,7 +66,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     address token0_,
     address token1_,
     uint256 feePercentage_,
-    uint256 sqrtRangeMultiplier_,
+    uint256 ticksInRange_,
     string memory name_,
     string memory symbol_
   ) Ticket(name_, symbol_) {
@@ -71,8 +75,15 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     swapRouter = swapRouter_;
     token0 = token0_;
     token1 = token1_;
-    sqrtRangeMultiplier = sqrtRangeMultiplier_;
+    ticksInRange = ticksInRange_;
     feePercentage = feePercentage_;
+    uint256 sqrtRangeMultiplier_ = D;
+    while (ticksInRange_ > 0) {
+      sqrtRangeMultiplier_ = (sqrtRangeMultiplier_ * tickSize) / D;
+      console.log(sqrtRangeMultiplier_);
+      ticksInRange_--;
+    }
+    sqrtRangeMultiplier = sqrtRangeMultiplier_;
   }
 
   ///
@@ -140,14 +151,14 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     override
     returns (
       int24 usingRange,
-      uint256 currentPrice,
+      uint160 currentPrice,
       uint256 L
     )
   {
-    usingRange = inUseRange;
+    usingRange = inUseRange * int24(int256(ticksInRange));
     (uint256 reserve0, uint256 reserve1, uint256 sqrt0, uint256 sqrt1) = getRangeInfo(usingRange);
     L = PoolHelper.LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
-    currentPrice = ((L * L * D) / (reserve0 + (L * D) / sqrt1)**2);
+    currentPrice = TickMath.getSqrtRatioAtTick(usingRange);
   }
 
   ///

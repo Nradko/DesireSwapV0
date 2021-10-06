@@ -11,10 +11,10 @@ contract PoolDeployer is IPoolDeployer {
     address tokenA_,
     address tokenB_,
     uint256 fee_,
-    uint256 sqrtRangeMultiplier_,
+    uint256 ticksInRange_,
     string memory name_,
     string memory symbol_
   ) external override returns (address poolAddress) {
-    poolAddress = address(new DesireSwapV0Pool(factory_, swapRouter_, tokenA_, tokenB_, fee_, sqrtRangeMultiplier_, name_, symbol_));
+    poolAddress = address(new DesireSwapV0Pool(factory_, swapRouter_, tokenA_, tokenB_, fee_, ticksInRange_, name_, symbol_));
   }
 }

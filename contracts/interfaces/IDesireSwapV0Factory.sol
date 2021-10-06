@@ -28,7 +28,7 @@ interface IDesireSwapV0Factory {
   /// @notice map stroing SqrtRamgeMultiplier assigned to pool with fee
   /// @param () fee of the pool
   /// @return sqrtRangeMultiplier of pool
-  function feeToSqrtRangeMultiplier(uint256 fee) external view returns (uint256);
+  function feeToTicksInRange(uint256 fee) external view returns (uint256);
 
   /// @param () 1st ERC20 token in pool
   /// @param () 2nd ERC20 token in pool

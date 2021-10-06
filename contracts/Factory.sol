@@ -12,7 +12,7 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
 
   mapping(address => bool) public override whitelisted;
 
-  mapping(uint256 => uint256) public override feeToSqrtRangeMultiplier;
+  mapping(uint256 => uint256) public override feeToTicksInRange;
   mapping(address => mapping(address => mapping(uint256 => address))) public override poolAddress;
 
   address[] public override poolList;
@@ -28,16 +28,17 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
     feeCollector = _owner;
     emit OwnerChanged(address(0), _owner);
     poolList.push(address(0));
-    feeToSqrtRangeMultiplier[5 * 10**14] = 1.000499875 * 10**18;
-    feeToSqrtRangeMultiplier[3 * 10**15] = 1.002501875 * 10**18;
-    feeToSqrtRangeMultiplier[10**16] = 1.01004512 * 10**18;
+    feeToTicksInRange[4 * 10**14] = 1;
+    feeToTicksInRange[5 * 10**14] = 10;
+    feeToTicksInRange[3 * 10**15] = 50;
+    feeToTicksInRange[10**16] = 200;
     deployerAddress = deployerAddress_;
   }
 
-  function addPoolType(uint256 fee_, uint256 sqrtRangeMultiplier_) external override onlyBy(owner) {
-    require(feeToSqrtRangeMultiplier[fee_] == 0);
-    feeToSqrtRangeMultiplier[fee_] = sqrtRangeMultiplier_;
-    emit NewPoolType(sqrtRangeMultiplier_, fee_);
+  function addPoolType(uint256 fee_, uint256 ticksInRange_) external override onlyBy(owner) {
+    require(feeToTicksInRange[fee_] == 0);
+    feeToTicksInRange[fee_] = ticksInRange_;
+    emit NewPoolType(ticksInRange_, fee_);
   }
 
   function createPool(
@@ -51,7 +52,7 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
     (address token0, address token1) = tokenA_ < tokenB_ ? (tokenA_, tokenB_) : (tokenB_, tokenA_);
     require(token0 != address(0) && token1 != address(0), '0ADDRESS');
     require(poolAddress[token0][token1][fee_] == address(0), 'ALREADY_EXISTS');
-    address pool = IPoolDeployer(deployerAddress).deployPool(address(this), swapRouter, token0, token1, fee_, feeToSqrtRangeMultiplier[fee_], name_, symbol_);
+    address pool = IPoolDeployer(deployerAddress).deployPool(address(this), swapRouter, token0, token1, fee_, feeToTicksInRange[fee_], name_, symbol_);
     poolAddress[token0][token1][fee_] = pool;
     poolAddress[token1][token0][fee_] = pool;
     poolList.push(pool);
