@@ -43,7 +43,7 @@ async function getTotalReserves(pool){
 }
 
 const tokenSupply = "100000000000000000000000000000000";
-const fee = "500000000000000"
+const fee = "400000000000000"
 const initialized = 4000
 const multiplier = 1.002501875*1.002501875;
 

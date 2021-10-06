@@ -11,11 +11,13 @@ pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import './base/Ticket.sol';
+
 import './libraries/PoolHelper.sol';
 import './libraries/TransferHelper.sol';
+import './libraries/TickMath.sol';
+
 import './interfaces/IDesireSwapV0Factory.sol';
 import './interfaces/IDesireSwapV0Pool.sol';
-
 import './interfaces/callback/IDesireSwapV0MintCallback.sol';
 import './interfaces/callback/IDesireSwapV0SwapCallback.sol';
 import './interfaces/callback/IDesireSwapV0FlashCallback.sol';
@@ -149,14 +151,14 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     override
     returns (
       int24 usingRange,
-      uint256 currentPrice,
+      uint160 currentPrice,
       uint256 L
     )
   {
     usingRange = inUseRange * int24(int256(ticksInRange));
     (uint256 reserve0, uint256 reserve1, uint256 sqrt0, uint256 sqrt1) = getRangeInfo(usingRange);
     L = PoolHelper.LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
-    currentPrice = ((L * L * D) / (reserve0 + (L * D) / sqrt1)**2);
+    currentPrice = TickMath.getSqrtRatioAtTick(usingRange);
   }
 
   ///

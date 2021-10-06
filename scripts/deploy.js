@@ -16,7 +16,14 @@ async function main() {
             const users = [owner, A1, A2, A3, A4, A5, A6, A7, A8, A9];
             console.log("owner:%s",owner.address);
             
-            const Deployer = await ethers.getContractFactory("PoolDeployer");
+            const TickMath = await ethers.getContractFactory("TickMath");
+            const tickMath = await TickMath.deploy();
+            
+            const Deployer = await ethers.getContractFactory("PoolDeployer",{
+                libraries:{
+                    TickMath: tickMath.address
+                }
+            });
             const deployer = await Deployer.deploy();
             console.log("deployer: %s", deployer.address)
             
@@ -32,8 +39,8 @@ async function main() {
             const liqManager = await LiqManager.deploy(factory.address, owner.address);
             console.log('liq address: %s', liqManager.address);
 
-            const THelper = await ethers.getContractFactory("LiquidityManagerQuoter");
-            const tHelper = await THelper.deploy();
+            const THelper = await ethers.getContractFactory("LiquidityManagerHelper");
+            const tHelper = await THelper.deploy(factory.address);
 
             const Token = await ethers.getContractFactory("TestERC20");
             const tokenA = await Token.deploy("TOKENA", "TA", owner.address);
@@ -44,7 +51,11 @@ async function main() {
             await factory.createPool(tokenA.address, tokenB.address, fee, "DesireSwap LP: TOKENA-TOKENB","DS_TA-TB_LP");
             const poolAddress = await factory.poolAddress(tokenA.address, tokenB.address, fee);
             console.log('Pool address: %s', poolAddress);
-		    const Pool = await ethers.getContractFactory("DesireSwapV0Pool");
+		    const Pool = await ethers.getContractFactory("DesireSwapV0Pool",{
+                libraries:{
+                    TickMath: tickMath.address
+                }
+            });
 		    const pool = await Pool.attach(poolAddress);
         console.log("done")
 
