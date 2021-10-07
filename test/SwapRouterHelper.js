@@ -171,13 +171,14 @@ describe("SwapRouterHelper", function () {
         });
         await consoleReserves(pool);
 
-        data = await srHelper.swapQuoter(tokenA.address, tokenB.address, fee, "true", "100000000000000000000", "0");
+        data = await srHelper.swapQuoter(tokenA.address, tokenB.address, fee, "true", "900000000000000000000", "0");
+
         let {0:amount0, 1:amount1} = data;
         console.log("amount0: %s   amount1:%s", amount0.toString(), amount1.toString());
         await consoleBalances(A1.address, tokenA, tokenB)
         await router.connect(A1).exactInputSingle({
-            "tokenIn" : tokenB.address,
-            "tokenOut": tokenA.address,
+            "tokenIn" : tokenA.address,
+            "tokenOut": tokenB.address,
             "fee": fee,
             "recipient": A1.address,
             "deadline": "1000000000000000000000000",

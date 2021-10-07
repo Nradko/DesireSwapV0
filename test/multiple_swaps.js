@@ -89,13 +89,19 @@ describe("Multiple_swaps", function () {
             const Token = await ethers.getContractFactory("TestERC20");
             const tokenA = await Token.deploy("TOKENA", "TA", owner.address);
             const tokenB = await Token.deploy("TOKENB", "TB", owner.address);
+            let token0 = tokenA.address < tokenB.address ? tokenA : tokenB;
+            let token1 = tokenA.address > tokenB.address ? tokenA : tokenB;
             console.log('TA address: %s', tokenA.address);
             console.log('TB address: %s', tokenB.address);
 
             await factory.createPool(tokenA.address, tokenB.address, fee, "DesireSwap LP: TOKENA-TOKENB","DS_TA-TB_LP");
             const poolAddress = await factory.poolAddress(tokenA.address, tokenB.address, fee);
             console.log('Pool address: %s', poolAddress);
-		    const Pool = await ethers.getContractFactory("DesireSwapV0Pool");
+		    const Pool = await ethers.getContractFactory("DesireSwapV0Pool",{
+                libraries:{
+                    TickMath: tickMath.address
+                }
+            });
 		    const pool = await Pool.attach(poolAddress);
         console.log("done")
 
@@ -143,36 +149,36 @@ describe("Multiple_swaps", function () {
                 expect(await pool.getAddressTickets(provider.address, 1 + step) == BigNumber.from(step+1));
                 await consoleBalances(pool.address, tokenA, tokenB);
 
-
+                    let totalRes0 = (await totalReserve0(pool))
                     await router.connect(swapper).exactOutputSingle({
-                        "tokenIn" : tokenA.address,
-                        "tokenOut": tokenB.address,
+                        "tokenIn" : token1.address,
+                        "tokenOut": token0.address,
                         "fee": fee,
                         "recipient": swapper.address,
                         "deadline": "1000000000000000000000000",
-                        "amountOut": (BigNumber.from("1000000000000000000000000").mul(BigNumber.from((i+1)*(step+1)*(step+2)/2))).toString(),
+                        "amountOut": totalRes0,
                         "amountInMaximum": "100000000000000000000000000000",
                         "sqrtPriceLimitX96": "0"
                     })
-        
-                    await router.connect(swapper).exactInputSingle({
-                        "tokenIn" : tokenB.address,
-                        "tokenOut": tokenA.address,
+                    let totalRes1 = (await totalReserve1(pool))
+                    console.log(totalRes1);
+                    await router.connect(swapper).exactOutputSingle({
+                        "tokenIn" : token0.address,
+                        "tokenOut": token1.address,
                         "fee": fee,
                         "recipient": swapper.address,
                         "deadline": "1000000000000000000000000",
-                        "amountIn": BigNumber.from("2000000000000000000000000").mul((i+1)*(step+1)*(step+2)/2).toString(),
-                        "amountOutMinimum": "2000000000000",
+                        "amountOut": totalRes1,
+                        "amountInMaximum": "1000000000000000000000000000001",
                         "sqrtPriceLimitX96": "0"
                     })
-        
                     await router.connect(swapper).exactOutputSingle({
-                        "tokenIn" : tokenA.address,
-                        "tokenOut": tokenB.address,
+                        "tokenIn" : token1.address,
+                        "tokenOut": token0.address,
                         "fee": fee,
                         "recipient": swapper.address,
                         "deadline": "1000000000000000000000000",
-                        "amountOut": BigNumber.from("1000000000000000000000000").mul((i+1)*(step+1)*(step+2)/2).toString(),
+                        "amountOut": totalRes0,
                         "amountInMaximum": "1000000000000000000000000000001",
                         "sqrtPriceLimitX96": "0"
                     })
@@ -190,8 +196,8 @@ describe("Multiple_swaps", function () {
             console.log("swap_cycle: %s", step);
             reserve = (await totalReserve1(pool)).toString();
             await router.connect(owner).exactOutputSingle({
-                "tokenIn" : tokenA.address,
-                "tokenOut": tokenB.address,
+                "tokenIn" : token0.address,
+                "tokenOut": token1.address,
                 "fee": fee,
                 "recipient": owner.address,
                 "deadline": "1000000000000000000000000",
@@ -203,8 +209,8 @@ describe("Multiple_swaps", function () {
 
             reserve = (await totalReserve0(pool)).toString();
             await router.connect(owner).exactOutputSingle({
-                "tokenIn" : tokenB.address,
-                "tokenOut": tokenA.address,
+                "tokenIn" : token1.address,
+                "tokenOut": token0.address,
                 "fee": fee,
                 "recipient": owner.address,
                 "deadline": "1000000000000000000000000",
@@ -216,8 +222,8 @@ describe("Multiple_swaps", function () {
 
             reserve = (await totalReserve1(pool)).toString();
             await router.connect(owner).exactOutputSingle({
-                "tokenIn" : tokenA.address,
-                "tokenOut": tokenB.address,
+                "tokenIn" : token0.address,
+                "tokenOut": token1.address,
                 "fee": fee,
                 "recipient": owner.address,
                 "deadline": "1000000000000000000000000",
