@@ -101,15 +101,15 @@ contract SwapRouterHelper is ISwapRouterHelper {
     (h.balance0, h.balance1) = pool.getTotalReserves();
     // tokensForExactTokens
     // token0 In, token1 Out, tokensForExactTokens
+    remained = s.amount > 0 ? uint256(s.amount) : uint256(-s.amount);
+    if (s.zeroForOne) {
+      require(remained <= h.balance1, 'DSV0POOL(swap): TR1');
+      (, usingReserve, h.value10, h.value11) = pool.getRangeInfo(usingRange);
+    } else {
+      require(remained <= h.balance0, 'DSV0POOL(swap): TR0');
+      (usingReserve, , h.value10, h.value11) = pool.getRangeInfo(usingRange);
+    }
     if (s.amount < 0) {
-      remained = uint256(-s.amount);
-      if (s.zeroForOne) {
-        require(remained <= h.balance1, 'DSV0POOL(swap): TR1');
-        (, usingReserve, h.value10, h.value11) = pool.getRangeInfo(usingRange);
-      } else {
-        require(remained <= h.balance0, 'DSV0POOL(swap): TR0');
-        (usingReserve, , h.value10, h.value11) = pool.getRangeInfo(usingRange);
-      }
       while (remained > usingReserve && ((s.zeroForOne ? sqrtPriceLimit > (h.value11) / D : sqrtPriceLimit < h.value10) || sqrtPriceLimit == 0)) {
         (h.balance0, usingRange) = _swapInRange(s.pool, feePercentage, usingRange, s.zeroForOne, usingReserve);
         amountRecieved += h.balance0;
@@ -125,7 +125,6 @@ contract SwapRouterHelper is ISwapRouterHelper {
     //  exactTokensForTokens
     //
     else if (s.amount > 0) {
-      remained = uint256(s.amount);
       uint256 predictedFee = (remained * feePercentage) / D;
       (h.value00, h.value01, h.value10, h.value11) = pool.getRangeInfo(usingRange);
       uint256 amountOut = PoolHelper.AmountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained - predictedFee);

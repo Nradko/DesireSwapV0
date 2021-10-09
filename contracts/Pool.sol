@@ -328,19 +328,21 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     uint256 amountSend;
     uint256 remained;
     int24 usingRange = inUseRange;
-    //
+    
+    remained = s.amount > 0 ? uint256(s.amount) : uint256(-s.amount);
+    console.log(remained);
+    if (s.zeroForOne) {
+      console.log(totalReserve1);
+      require(remained <= totalReserve1, 'DSV0POOL(swap): TR1');
+      usingReserve = ranges[usingRange].reserve1;
+    } else {
+      console.log(totalReserve0);
+      require(remained <= totalReserve0, 'DSV0POOL(swap): TR0');
+      usingReserve = ranges[usingRange].reserve0;
+    }
+
     // tokensForExactTokens
-    //
-    // token0 In, token1 Out, tokensForExactTokens
     if (s.amount < 0) {
-      remained = uint256(-s.amount);
-      if (s.zeroForOne) {
-        require(remained <= totalReserve1, 'DSV0POOL(swap): TR1');
-        usingReserve = ranges[usingRange].reserve1;
-      } else {
-        require(remained <= totalReserve0, 'DSV0POOL(swap): TR0');
-        usingReserve = ranges[usingRange].reserve0;
-      }
       while (
         remained > usingReserve &&
         ((s.zeroForOne ? sqrtPriceLimit > (ranges[usingRange].sqrtPriceBottom * sqrtRangeMultiplier) / D : sqrtPriceLimit < ranges[usingRange].sqrtPriceBottom) || sqrtPriceLimit == 0)
@@ -353,11 +355,8 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       amountRecieved += _swapInRange(usingRange, s.zeroForOne, remained);
       amountSend = uint256(-s.amount);
     }
-    //
     //  exactTokensForTokens
-    //
     else if (s.amount > 0) {
-      remained = uint256(s.amount);
       uint256 predictedFee = (remained * feePercentage) / D;
       (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(usingRange);
       uint256 amountOut = PoolHelper.AmountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained - predictedFee);
