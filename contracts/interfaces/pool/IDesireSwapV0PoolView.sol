@@ -51,7 +51,9 @@ interface IDesireSwapV0PoolView {
     view
     returns (
       int24 usingRange,
-      uint256 currentPrice,
-      uint256 L
+      uint256 reserve0,
+      uint256 reserve1,
+      uint256 liqInRange,
+      uint256 currentPrice
     );
 }
