@@ -19,11 +19,7 @@ async function main() {
             const TickMath = await ethers.getContractFactory("TickMath");
             const tickMath = await TickMath.deploy();
             
-            const Deployer = await ethers.getContractFactory("PoolDeployer",{
-                libraries:{
-                    TickMath: tickMath.address
-                }
-            });
+            const Deployer = await ethers.getContractFactory("PoolDeployer");
             const deployer = await Deployer.deploy();
             console.log("deployer: %s", deployer.address)
             
@@ -51,11 +47,7 @@ async function main() {
             await factory.createPool(tokenA.address, tokenB.address, fee, "DesireSwap LP: TOKENA-TOKENB","DS_TA-TB_LP");
             const poolAddress = await factory.poolAddress(tokenA.address, tokenB.address, fee);
             console.log('Pool address: %s', poolAddress);
-		    const Pool = await ethers.getContractFactory("DesireSwapV0Pool",{
-                libraries:{
-                    TickMath: tickMath.address
-                }
-            });
+		    const Pool = await ethers.getContractFactory("DesireSwapV0Pool");
 		    const pool = await Pool.attach(poolAddress);
         console.log("done")
 
@@ -89,8 +81,8 @@ async function main() {
             "token0": tokenA.address,
             "token1": tokenB.address,
             "fee": fee,
-            "lowestRangeIndex" : 0 + initialized,
-            "highestRangeIndex": 0 + initialized,
+            "lowestRangeIndex" : 10 + initialized,
+            "highestRangeIndex": 10 + initialized,
             "liqToAdd": "10000000",
             "amount0Max":"100000000000000000000000",
             "amount1Max": "10000000000000000000000000",
@@ -103,27 +95,6 @@ async function main() {
     } catch (err) {
         console.error('Rejection handled.',err);
     }
-    await tokenA.connect(owner).approve(router.address, tokenSupply);
-    await tokenB.connect(owner).approve(router.address, tokenSupply);
-    console.log('approved');
-
-    console.log('firstSupply');
-    await liqManager.connect(A9).supply({
-      token0: tokenA.address,
-      token1: tokenB.address,
-      fee: fee,
-      lowestRangeIndex: 0 + initialized,
-      highestRangeIndex: 0 + initialized,
-      liqToAdd: '10000000',
-      amount0Max: '100000000000000000000000',
-      amount1Max: '10000000000000000000000000',
-      recipient: A9.address,
-      deadline: '1000000000000000000000000',
-    });
-    console.log('firstSupply_done');
-  } catch (err) {
-    console.error('Rejection handled.', err);
-  }
 }
 
 main()

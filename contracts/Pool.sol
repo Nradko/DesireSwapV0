@@ -14,7 +14,6 @@ import './base/Ticket.sol';
 
 import './libraries/PoolHelper.sol';
 import './libraries/TransferHelper.sol';
-import './libraries/TickMath.sol';
 
 import './interfaces/IDesireSwapV0Factory.sol';
 import './interfaces/IDesireSwapV0Pool.sol';
@@ -151,14 +150,14 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     override
     returns (
       int24 usingRange,
-      uint160 currentPrice,
+      uint256 currentPrice,
       uint256 L
     )
   {
     usingRange = inUseRange * int24(int256(ticksInRange));
     (uint256 reserve0, uint256 reserve1, uint256 sqrt0, uint256 sqrt1) = getRangeInfo(usingRange);
     L = PoolHelper.LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
-    currentPrice = TickMath.getSqrtRatioAtTick(usingRange);
+    currentPrice = (L*L/(reserve1 + L*sqrt0/D)**2);
   }
 
   ///

@@ -27,7 +27,7 @@ module.exports = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 20,
+        runs: 1,
       },
     },
   },
@@ -35,7 +35,10 @@ module.exports = {
     rinkeby: {
       url: INFURA_URL,
       accounts:  [PRIVATE_KEY]
-    }
+    },
+    hardhat: {
+      chainId: 1337
+    },
   },  
   contractSizer: {
     alphaSort: true,
