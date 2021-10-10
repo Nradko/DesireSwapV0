@@ -46,12 +46,14 @@ interface IDesireSwapV0PoolView {
       bool _activated
     );
 
-  function slot0()
+  function inUseInfo()
     external
     view
     returns (
       int24 usingRange,
       uint256 currentPrice,
-      uint256 L
+      uint256 inUseLiq,
+      uint256 inUseReserve0,
+      uint256 inUseReserve1
     );
 }

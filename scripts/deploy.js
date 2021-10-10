@@ -32,8 +32,8 @@ async function main() {
             const liqManager = await LiqManager.deploy(factory.address, owner.address);
             console.log('liq address: %s', liqManager.address);
 
-            const THelper = await ethers.getContractFactory("LiquidityManagerQuoter");
-            const tHelper = await THelper.deploy();
+            const THelper = await ethers.getContractFactory("LiquidityManagerHelper");
+            const tHelper = await THelper.deploy(factory.address);
 
             const Token = await ethers.getContractFactory("TestERC20");
             const tokenA = await Token.deploy("TOKENA", "TA", owner.address);

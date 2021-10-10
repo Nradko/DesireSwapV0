@@ -143,20 +143,24 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     _activated = ranges[index].activated;
   }
 
-  function slot0()
+  function inUseInfo()
     public
     view
     override
     returns (
       int24 usingRange,
       uint256 currentPrice,
-      uint256 L
+      uint256 inUseLiq,
+      uint256 inUseReserve0,
+      uint256 inUseReserve1
     )
   {
     usingRange = inUseRange * int24(int256(ticksInRange));
     (uint256 reserve0, uint256 reserve1, uint256 sqrt0, uint256 sqrt1) = getRangeInfo(usingRange);
-    L = PoolHelper.LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
-    currentPrice = ((L * L * D) / (reserve0 + (L * D) / sqrt1)**2);
+    inUseLiq = PoolHelper.LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
+    currentPrice = ((inUseLiq * inUseLiq * D) / (reserve0 + (inUseLiq * D) / sqrt1)**2);
+    inUseReserve0 = reserve0;
+    inUseReserve1 = reserve1;
   }
 
   ///
