@@ -52,7 +52,6 @@ contract LiquidityManager is ILiquidityManager, PeripheryImmutableState, Periphe
     IDesireSwapV0Pool pool = IDesireSwapV0Pool(poolAddress);
     (ticketId, amount0, amount1) = pool.mint(params.recipient, params.lowestRangeIndex, params.highestRangeIndex, params.liqToAdd, abi.encode(MintCallbackData({poolKey: poolKey, payer: msg.sender})));
     require(amount0 <= params.amount0Max && amount1 <= params.amount1Max, 'DSV0LM(supply): amountMax_exceeded');
-    ticketId = pool.getNextTicketId() - 1;
     emit Supply(params.recipient, poolAddress, ticketId);
   }
 }
