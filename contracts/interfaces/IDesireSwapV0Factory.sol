@@ -20,14 +20,14 @@ interface IDesireSwapV0Factory {
   /// @return the deployers contract address
   function deployerAddress() external view returns (address);
 
-  /// @notice whitelisted is a map (address => bool) storing infromation if a given address is whitelisted to interact with swap router
-  /// @param () to be checked if is whitelisted to interact with swap router(not importanf for external addresses)
+  /// @notice allowlisted is a map (address => bool) storing infromation if a given address is allowlisted to interact with swap router
+  /// @param () to be checked if is allowlisted to interact with swap router(not importanf for external addresses)
   /// @return true if contract can interact with swapRouter
-  function whitelisted(address) external view returns (bool);
+  function allowlisted(address) external view returns (bool);
 
-  /// @notice map stroing SqrtRamgeMultiplier assigned to pool with fee
+  /// @notice map ticks in a range corresponding to the fee
   /// @param () fee of the pool
-  /// @return sqrtRangeMultiplier of pool
+  /// @return ticks in a single range
   function feeToTicksInRange(uint256 fee) external view returns (uint256);
 
   /// @param () 1st ERC20 token in pool
