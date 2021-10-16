@@ -26,7 +26,7 @@ contract Ticket is ERC721, ITicket {
   // below mappings are keeping infromation about which tickets and address own
   // and on which position in array the ticket can be found
   mapping(address => mapping(uint256 => uint256)) private _addressTickets;
-  mapping(address => uint256) private _addressTicketsLength;
+  mapping(address => uint256) private _addressTicketsAmount;
   mapping(uint256 => uint256) private _ticketPosition;
 
   constructor(string memory name_, string memory symbol_) ERC721(name_, symbol_) {}
@@ -43,8 +43,8 @@ contract Ticket is ERC721, ITicket {
     return _ticketSupplyData[ticketId_][index_];
   }
 
-  function getAddressLength(address owner_) external view override returns (uint256) {
-    return _addressTicketsLength[owner_];
+  function getAddressTicketsAmount(address owner_) public view override returns (uint256) {
+    return _addressTicketsAmount[owner_];
   }
 
   function getAddressTickets(address owner_, uint256 position_) external view override returns (uint256) {
@@ -55,6 +55,13 @@ contract Ticket is ERC721, ITicket {
     return _ticketPosition[ticketId_];
   }
 
+  function getAddressTicketIdList(address owner_) external view override returns(uint256[] memory ticketIdList){
+    uint256 ticketAmount = getAddressTicketsAmount( owner_);
+    for (uint256 i = 1; i <= ticketAmount; i++){
+      ticketIdList[i]=(_addressTickets[owner_][i]);
+    }
+  }
+
   function _beforeTokenTransfer(
     address from,
     address to,
@@ -62,12 +69,17 @@ contract Ticket is ERC721, ITicket {
   ) internal override {
     uint256 ticketPosition = _ticketPosition[ticketId];
     _addressTickets[from][ticketPosition] = 0;
-    uint256 length = _addressTicketsLength[to]++;
-    if (length == 0) {
-      length++;
-      _addressTicketsLength[to]++;
+    if(to != address(0)){
+      uint256 length = _addressTicketsAmount[to]++;
+      if (length == 0) {
+        length++;
+        _addressTicketsAmount[to]++;
+      }
+      _addressTickets[to][length] = ticketId;
+      _ticketPosition[ticketId] = length;
     }
-    _addressTickets[to][length] = ticketId;
-    _ticketPosition[ticketId] = length;
+    else{
+      _ticketPosition[ticketId] = 0;
+    }
   }
 }
