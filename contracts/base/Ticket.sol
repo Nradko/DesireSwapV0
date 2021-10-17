@@ -16,7 +16,7 @@ import 'hardhat/console.sol';
 contract Ticket is ERC721, ITicket {
   // struct TicketData can be found in ITicket
 
-  // Mapping from token Id to positionSupplyCoefficient
+  // Mapping from ticketId Id to positionSupplyCoefficient
   mapping(uint256 => mapping(int24 => uint256)) internal _ticketSupplyData;
 
   // Mapping from token ID to data

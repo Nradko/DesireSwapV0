@@ -8,10 +8,10 @@
  *******************************************************/
 pragma solidity ^0.8.0;
 
-import './libraries/PoolHelper.sol';
-import './interfaces/IDesireSwapV0Pool.sol';
-import './interfaces/IDesireSwapV0Factory.sol';
-import './interfaces/ILiquidityManagerHelper.sol';
+import '../libraries/PoolHelper.sol';
+import '../interfaces/IDesireSwapV0Pool.sol';
+import '../interfaces/IDesireSwapV0Factory.sol';
+import '../interfaces/ILiquidityManagerHelper.sol';
 
 import 'hardhat/console.sol';
 
