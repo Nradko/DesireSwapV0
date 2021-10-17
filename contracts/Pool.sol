@@ -148,7 +148,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     override
     returns (
       int24 usingRange,
-      uint256 currentPrice,
+      uint256 sqrtCurrentPrice,
       uint256 inUseLiq,
       uint256 inUseReserve0,
       uint256 inUseReserve1
@@ -157,7 +157,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     usingRange = inUseRange * int24(int256(ticksInRange));
     (uint256 reserve0, uint256 reserve1, uint256 sqrt0, uint256 sqrt1) = getRangeInfo(usingRange);
     inUseLiq = PoolHelper.LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
-    currentPrice = ((inUseLiq * inUseLiq * D) / (reserve0 + (inUseLiq * D) / sqrt1)**2);
+    sqrtCurrentPrice = (inUseLiq * D) / (reserve0 + (inUseLiq * D) / sqrt1);
     inUseReserve0 = reserve0;
     inUseReserve1 = reserve1;
   }
