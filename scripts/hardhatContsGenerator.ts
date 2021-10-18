@@ -16,7 +16,9 @@ export const contractNamesHardhatConstsMap = Object.freeze({
 
 export const generateHardhatConsts = (contractMetadatas: Record<string, ContractInput>) => {
   const content = `export const DESIRE_SWAP_HARDHAT_ADDRESSES = {
-  ${Object.entries(contractNamesHardhatConstsMap).map(([contractName, hardhatConstName]) => `${hardhatConstName}: '${contractMetadatas[contractName].address}'\n`)}};`;
+  ${Object.entries(contractNamesHardhatConstsMap)
+    .map(([contractName, hardhatConstName]) => `${hardhatConstName}: '${contractMetadatas[contractName].address}',\n\t`)
+    .join('')}};`;
 
   try {
     fs.writeFileSync('./hardhatConsts.ts', content);

@@ -6,19 +6,12 @@ const ethernal = require('hardhat-ethernal');
 import { ContractInput } from 'hardhat-ethernal/dist/src/types';
 import { task } from 'hardhat/config';
 import 'hardhat/types/runtime';
-import { Contract } from 'ethers';
 import { DesireSwapV0Factory, DesireSwapV0Pool, LiquidityManager, LiquidityManagerHelper, SwapRouter, UniswapInterfaceMulticall } from '../typechain';
 import { PoolDeployer } from '../typechain/PoolDeployer';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { contractNames, FEE } from './consts';
 import { generateHardhatConsts } from './hardhatContsGenerator';
-
-const deployContractFactory = async <T extends Contract>(contractName: string, ...deployArgs: string[]) => {
-  const ContractFactory = await hardhat.ethers.getContractFactory(contractName);
-  const contractInstance = (await ContractFactory.deploy(...deployArgs)) as T;
-  console.log(`${contractName} address: ${contractInstance.address}`);
-  return contractInstance;
-};
+import { deployContract } from './utils';
 
 const getContractMetadata = (contractName: string, contractAddress: string): ContractInput => ({
   name: contractName,
@@ -37,7 +30,6 @@ const synchronizeContractsWithEthernal = async (contractMetadatas: Record<string
 async function main() {
   try {
     console.log('DEPLOY START');
-    const multicall = await deployContractFactory<UniswapInterfaceMulticall>(contractNames.multicall);
 
     const [account] = await hardhat.ethers.getSigners();
     console.log('Deploying contracts with the account: %s', account.address);
@@ -45,11 +37,12 @@ async function main() {
     const [owner] = await hardhat.ethers.getSigners();
     console.log('owner:%s', owner.address);
 
-    const deployer = await deployContractFactory<PoolDeployer>(contractNames.poolDeployer);
-    const factory = await deployContractFactory<DesireSwapV0Factory>(contractNames.factory, owner.address, deployer.address);
-    const router = await deployContractFactory<SwapRouter>(contractNames.swapRouter, factory.address, owner.address);
-    const liqManager = await deployContractFactory<LiquidityManager>(contractNames.liquidityManager, factory.address, owner.address);
-    const tHelper = await deployContractFactory<LiquidityManagerHelper>(contractNames.liquidityManagerHelper, factory.address);
+    const multicall = await deployContract<UniswapInterfaceMulticall>(contractNames.multicall);
+    const deployer = await deployContract<PoolDeployer>(contractNames.poolDeployer);
+    const factory = await deployContract<DesireSwapV0Factory>(contractNames.factory, owner.address, deployer.address);
+    const router = await deployContract<SwapRouter>(contractNames.swapRouter, factory.address, owner.address);
+    const liqManager = await deployContract<LiquidityManager>(contractNames.liquidityManager, factory.address, owner.address);
+    const tHelper = await deployContract<LiquidityManagerHelper>(contractNames.liquidityManagerHelper, factory.address);
     const { pool, tokenA, tokenB } = await deployTestTokensAndPool(owner, factory);
 
     const deployedCoreContractMetadatas = {
@@ -68,8 +61,8 @@ async function main() {
       [contractNames.pool]: getContractMetadata(contractNames.pool, pool.address),
     };
 
-    await synchronizeContractsWithEthernal(deployedContractMetadatas);
     generateHardhatConsts(deployedContractMetadatas);
+    await synchronizeContractsWithEthernal(deployedContractMetadatas);
   } catch (err) {
     console.error('Rejection handled.', err);
   }
