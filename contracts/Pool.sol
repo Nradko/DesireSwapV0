@@ -310,7 +310,6 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     address to;
     bool zeroForOne;
     int256 amount;
-    uint256 sqrtPriceLimit;
     bytes data;
   }
 
@@ -318,11 +317,10 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     address to,
     bool zeroForOne,
     int256 amount,
-    uint256 sqrtPriceLimit,
     bytes calldata data
   ) external override returns (int256, int256) {
     if (msg.sender != swapRouter) require(IDesireSwapV0Factory(factory).whitelisted(msg.sender), 'POOL(swap): not_whitelisted');
-    swapParams memory s = swapParams({to: to, zeroForOne: zeroForOne, amount: amount, sqrtPriceLimit: sqrtPriceLimit, data: data});
+    swapParams memory s = swapParams({to: to, zeroForOne: zeroForOne, amount: amount, data: data});
     helpData memory h = helpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: 0, balance1: 0, value00: 0, value01: 0, value10: 0, value11: 0});
     uint256 usingReserve;
     uint256 amountRecieved;
@@ -342,10 +340,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         require(remained <= totalReserve0, 'POOL(swap): TR0');
         usingReserve = ranges[usingRange].reserve0;
       }
-      while (
-        remained > usingReserve &&
-        ((s.zeroForOne ? sqrtPriceLimit > (ranges[usingRange].sqrtPriceBottom * sqrtRangeMultiplier) / D : sqrtPriceLimit < ranges[usingRange].sqrtPriceBottom) || sqrtPriceLimit == 0)
-      ) {
+      while (remained > usingReserve) {
         amountRecieved += _swapInRange(usingRange, s.zeroForOne, usingReserve);
         remained -= usingReserve;
         usingRange = inUseRange;
@@ -363,10 +358,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(usingRange);
       uint256 amountOut = PoolHelper.AmountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained - predictedFee);
       require(amountOut <= (s.zeroForOne ? totalReserve1 : totalReserve0), 'POOL(swap): totalReserve to small');
-      while (
-        amountOut > (s.zeroForOne ? h.value01 : h.value00) &&
-        ((s.zeroForOne ? sqrtPriceLimit > (ranges[usingRange].sqrtPriceBottom * sqrtRangeMultiplier) / D : sqrtPriceLimit < ranges[usingRange].sqrtPriceBottom) || sqrtPriceLimit == 0)
-      ) {
+      while (amountOut > (s.zeroForOne ? h.value01 : h.value00)) {
         remained -= _swapInRange(usingRange, s.zeroForOne, s.zeroForOne ? h.value01 : h.value00);
         amountSend += s.zeroForOne ? h.value01 : h.value00;
         predictedFee = (remained * feePercentage) / D;
@@ -379,7 +371,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       remained -= help;
       amountSend += amountOut;
       amountRecieved = uint256(s.amount) - remained;
-    }
+      }
     //!!!
     TransferHelper.safeTransfer(s.zeroForOne ? token1 : token0, s.to, amountSend);
     IDesireSwapV0SwapCallback(msg.sender).desireSwapV0SwapCallback(s.zeroForOne ? int256(amountRecieved) : -int256(amountSend), s.zeroForOne ? -int256(amountSend) : int256(amountRecieved), data);
