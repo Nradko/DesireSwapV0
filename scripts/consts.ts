@@ -10,6 +10,7 @@ export const contractNames = {
   tokenA: 'TOKENA',
   tokenB: 'TOKENB',
   pool: 'DesireSwapV0Pool',
+  positionViewer: 'PositionViewer'
 };
 
 // eslint-disable-next-line @typescript-eslint/no-magic-numbers
