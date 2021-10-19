@@ -87,24 +87,29 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   ///
   /// VIEW
   ///
+  /// inherit doc from IDesreSwapV0Pool
   function balance0() public view override returns (uint256) {
     return IERC20(token0).balanceOf(address(this));
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function balance1() public view override returns (uint256) {
     return IERC20(token1).balanceOf(address(this));
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function getLastBalances() external view override returns (uint256 _lastBalance0, uint256 _lastBalance1) {
     _lastBalance0 = lastBalance0;
     _lastBalance1 = lastBalance1;
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function getTotalReserves() external view override returns (uint256 _totalReserve0, uint256 _totalReserve1) {
     _totalReserve0 = totalReserve0;
     _totalReserve1 = totalReserve1;
   }
 
+  /// note returns data of range with index = index
   function getRangeInfo(int24 index)
     private
     view
@@ -121,6 +126,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     _sqrtPriceTop = (_sqrtPriceBottom * sqrtRangeMultiplier) / D;
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function getFullRangeInfo(int24 index)
     external
     view
@@ -142,6 +148,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     _activated = ranges[index].activated;
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function inUseInfo()
     public
     view
@@ -165,11 +172,13 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   ///
   /// private
   ///
+  /// note updates lastBalances
   function _updateLastBalances(uint256 _lastBalance0, uint256 _lastBalance1) private {
     lastBalance0 = _lastBalance0;
     lastBalance1 = _lastBalance1;
   }
 
+  /// note modifyRangeReserves and changes the inUsePosition if reserves are used
   function _modifyRangeReserves(
     int24 index,
     uint256 toAdd0,
@@ -195,21 +204,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     }
   }
 
-  ///
-  /// Range activation
-  ///
-  function activatePrivate(int24 index) private {
-    require(!ranges[index].activated, 'POOL(activatePrivate): PAA');
-    if (index > highestActivatedRange) {
-      if (!ranges[index - 1].activated) activate(index - 1);
-      ranges[index].sqrtPriceBottom = (ranges[index - 1].sqrtPriceBottom * sqrtRangeMultiplier) / D;
-    } else if (index < lowestActivatedRange) {
-      if (!ranges[index + 1].activated) activate(index + 1);
-      ranges[index].sqrtPriceBottom = (ranges[index + 1].sqrtPriceBottom * D) / sqrtRangeMultiplier;
-    }
-    ranges[index].activated = true;
-  }
-
+  /// note activates the ranges up/down to range with index = index
   function activate(int24 index) public override {
     require(!ranges[index].activated, 'POOL(activate): PAA');
     if (index > highestActivatedRange) {
@@ -231,14 +226,6 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   /// POOL ACTIONS
   ///
 
-  /// Swapping
-
-  // below function make swap inside only one position. It is used to make "whole" swap.
-  // it swaps token0 to token1 if zeroForOne, else it swaps token1 to token 0.
-  // it swaps tokensForExactTokens only.
-  // amountOut is amount transfered to address "to"
-  // !! IT TRANSFERS TOKENS OUT OF POOL !!
-  // !! IT MODIFIES IMPORTANT DATA !!
 
   struct helpData {
     uint256 lastBalance0;
@@ -251,6 +238,11 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     uint256 value11;
   }
 
+  /// @notice this method is used to perfom swaps. it changes data of range by amountOut and amountIn
+  /// @param index of range which data will be modified
+  /// @param zeroForOne swapping token0 for token1 (true) ot token1 for token0 (false)
+  /// @param amountOut amountOut of token that goes out of pool that should be transferred out
+  /// @param amountIn retuns amountIn of token that enters the pool that should be transfered in
   function _swapInRange(
     int24 index,
     bool zeroForOne,
@@ -313,6 +305,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     bytes data;
   }
 
+/// inherit doc from IDesreSwapV0Pool
   function swap(
     address to,
     bool zeroForOne,
@@ -399,10 +392,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   ///	ADD LIQUIDITY
   ///
 
-  //  The proof of being LP is Ticket that stores information of how much liquidity was provided.
-  //  It is minted when L is provided.
-  //  It is burned when L is taken.
-
+  /// @notice this method  is writing data down on ticket while performing mint
   function _printOnTicket0(
     int24 index,
     uint256 ticketId,
@@ -426,6 +416,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     _modifyRangeReserves(index, amount0ToAdd, 0, true, true, false);
   }
 
+  /// @notice this method  is writing data down on ticket while performing mint
   function _printOnTicket1(
     int24 index,
     uint256 ticketId,
@@ -452,6 +443,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     _modifyRangeReserves(index, 0, amount1ToAdd, true, true, false);
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function mint(
     address to,
     int24 lowestRangeIndex,
@@ -533,7 +525,12 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   ///
   ///	REDEEM LIQ
   ///
-  // zeroOrOne 0=false if only token0 in reserves, 1=true if only token 1 in reserves.
+  
+  /// @notice method that reads from ticket data used for ranges out of current Price
+  /// @param index of range that we are reading from
+  /// @param ticketId Id of ticket that is beeing burned
+  /// @param sendZero if only token 0 should be send (true) or only token1 (false)
+  /// @return amountToTransfer amount that should be transfer out of pool.
   function _readTicket(
     int24 index,
     uint256 ticketId,
@@ -554,6 +551,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     ranges[index].supplyCoefficient -= supply;
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function burn(address to, uint256 ticketId) external override returns (uint256, uint256) {
     require(_exists(ticketId), 'POOL(burn): 0');
     require(_isApprovedOrOwner(_msgSender(), ticketId), 'POOL(burn): 1');
@@ -606,9 +604,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     return (amount0, amount1);
   }
 
-  //
-  // FLASH
-  //
+  /// inherit doc from IDesreSwapV0Pool
   function flash(
     address recipient,
     uint256 amount0,
@@ -634,13 +630,16 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     uint256 paid0 = balance0After - balance0Before;
     uint256 paid1 = balance1After - balance1Before;
 
+    _updateLastBalances(balance0After, balance1After);
+
     emit Flash(msg.sender, recipient, amount0, amount1, paid0, paid1);
   }
 
   ///
   /// OWNER ACTIONS
   ///
-  //initialize helper
+
+  /// note method that is used during initialization to calculated priceRanges of starting Range
   function startingSqrtPriceBottom(int24 _startingInUseRange) private view returns (uint256 startingSqrtPriceBottom_) {
     startingSqrtPriceBottom_ = D;
     uint256 multiplier = sqrtRangeMultiplier;
@@ -655,6 +654,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     return startingSqrtPriceBottom_;
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function initialize(int24 _startingInUseRange) external override {
     require(msg.sender == IDesireSwapV0Factory(factory).owner(), 'POOL(initialize): err1');
     require(initialized == false, 'POOL(initialized): err2');
@@ -666,6 +666,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     lowestActivatedRange = _startingInUseRange;
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function collectFee(address token, uint256 amount) external override {
     require(msg.sender == IDesireSwapV0Factory(factory).owner(), 'POOL(collectFee): err1');
     TransferHelper.safeTransfer(token, IDesireSwapV0Factory(factory).feeCollector(), amount);
@@ -673,12 +674,14 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     emit CollectFee(token, amount);
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function setProtocolFee(bool _protocolFeeIsOn, uint256 _protocolFeePart) external override {
     require(msg.sender == IDesireSwapV0Factory(factory).owner(), 'POOL(serProtocolFee): err');
     protocolFeeIsOn = _protocolFeeIsOn;
     protocolFeePart = _protocolFeePart;
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function setSwapRouter() external override {
     swapRouter = IDesireSwapV0Factory(factory).swapRouter();
   }

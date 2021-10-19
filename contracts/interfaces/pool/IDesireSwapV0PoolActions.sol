@@ -8,10 +8,10 @@ interface IDesireSwapV0PoolActions {
   function activate(int24 index) external;
 
   /// @notice Swap token0 for token1, or token1 for token0
-  /// @dev The caller of this method receives a callback in the form of IUniswapV3SwapCallback#uniswapV3SwapCallback
-  /// @param recipient The address to receive the output of the swap
+  /// @dev The caller of this method receives a callback in the form of IDesireSwapV0SwapCallback
+  /// @param to The address to receive the output of the swap
   /// @param zeroForOne The direction of the swap, true for token0 to token1, false for token1 to token0
-  /// @param amountSpecified The amount of the swap, which implicitly configures the swap as exact input (positive), or exact output (negative)
+  /// @param amount amountSpecified The amount of the swap, which implicitly configures the swap as exact input (positive), or exact output (negative)
   /// @param data Any data to be passed through to the callback
   /// @return amount0 The delta of the balance of token0 of the pool, exact when negative, minimum when positive
   /// @return amount1 The delta of the balance of token1 of the pool, exact when negative, minimum when positive
@@ -23,7 +23,10 @@ interface IDesireSwapV0PoolActions {
   ) external returns (int256, int256);
 
   /// note supply a pool and mint an ERC721 Token called Ticket that is used later to redeem funds.
-  /// @param to address to which a Ticket will be sent
+  /// @param to address to recive Ticket
+  /// @dev The caller of this method receives a callback in the form of IUniswapV3MintCallback#uniswapV3MintCallback
+    /// in which they must pay any token0 or token1 owed for the liquidity. The amount of token0/token1 due depends
+    /// on tickLower, tickUpper, the amount of liquidity, and the current price.
   /// @param lowestRangeIndex supply ranges with index >= lowestRangeIndex
   /// @param highestRangeIndex supply ranges with index <= highestRangeIndex
   /// @param liqToAdd liquidity that is added to ranges
@@ -47,8 +50,8 @@ interface IDesireSwapV0PoolActions {
 
   /// note burns the Ticked that and returns supplied funds
   /// @param to address to which the funds are transfered
-  /// @param tickedId Id of token to be burnt
-  /// @returns (uint256,uint256) = (amount of token0 returned, amount of token1 returned)
+  /// @param ticketId Id of token to be burnt
+  /// @return (uint256,uint256) = (amount of token0 returned, amount of token1 returned)
   function burn(address to, uint256 ticketId) external returns (uint256, uint256);
 
     /// @notice Receive token0 and/or token1 and pay it back, plus a fee, in the callback

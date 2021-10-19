@@ -58,6 +58,7 @@ interface IDesireSwapV0Factory {
     string memory symbol_
   ) external;
 
+  /// onwer action, setting global variables
   function setOwner(address _owner) external;
 
   function setFeeCollector(address _feeCollector) external;

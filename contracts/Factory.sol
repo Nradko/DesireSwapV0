@@ -35,12 +35,14 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
     deployerAddress = deployerAddress_;
   }
 
+  /// inherit doc from IDesreSwapV0Factory
   function addPoolType(uint256 fee_, uint256 ticksInRange_) external override onlyBy(owner) {
     require(feeToTicksInRange[fee_] == 0);
     feeToTicksInRange[fee_] = ticksInRange_;
     emit NewPoolType(ticksInRange_, fee_);
   }
 
+/// inherit doc from IDesreSwapV0Factory
   function createPool(
     address tokenA_,
     address tokenB_,
@@ -60,16 +62,19 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
     emit PoolCreated(token0, token1, fee_, pool);
   }
 
+/// inherit doc from IDesreSwapV0Factory
   function setOwner(address _owner) external override onlyBy(owner) {
     emit OwnerChanged(owner, _owner);
     owner = _owner;
   }
 
+/// inherit doc from IDesreSwapV0Factory
   function setFeeCollector(address _feeCollector) external override onlyBy(owner) {
     emit CollectorChanged(feeCollector, _feeCollector);
     feeCollector = _feeCollector;
   }
 
+/// inherit doc from IDesreSwapV0Factory
   function setSwapRouter(address swapRouter_) external override onlyBy(owner) {
     emit SwapRouterChanged(swapRouter, swapRouter_);
     swapRouter = swapRouter_;
