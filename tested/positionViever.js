@@ -18,6 +18,7 @@ async function consoleReserves(pool){
     let {0: totReserve0, 1: totReserve1} = reserves;
     console.log("totalReserves -> tokenA: %s -> tokenB: %s", totReserve0.toString(), totReserve1.toString());
 }
+
 async function totalReserve0(pool){
     const reserves = await pool.getTotalReserves();
     let {0: totReserve0, 1: totReserve1} = reserves;
@@ -42,21 +43,20 @@ async function getTotalReserves(pool){
 }
 
 const tokenSupply = "100000000000000000000000000000000";
-const fee = "500000000000000"
-const initialized = 0
-const activate = 100
+const fee = "400000000000000"
+const initialized = -4000
 const multiplier = 1.002501875*1.002501875;
 
-describe("LiquidityManagerHelper", function () {
+describe("position Viewer", function () {
 	this.timeout(0);
     it("TESTing...", async function () {
 		console.log("Deploying...")
             const [owner, A1, A2, A3, A4, A5, A6, A7, A8, A9] = await ethers.getSigners();
-            const users = [owner, A1, A2, A3, A4, A5, A6, A7, A8, A9];
             console.log("owner:%s",owner.address);
             
             const Deployer = await ethers.getContractFactory("PoolDeployer");
             const deployer = await Deployer.deploy();
+            console.log("deployed deployer");
             console.log("deployer: %s", deployer.address)
             
             const Factory = await ethers.getContractFactory("DesireSwapV0Factory");
@@ -84,76 +84,46 @@ describe("LiquidityManagerHelper", function () {
             console.log('TA address: %s', tokenA.address);
             console.log('TB address: %s', tokenB.address);
 
+            const Viewer = await ethers.getContractFactory('PositionViewer');
+            const viewer = await Viewer.deploy();
+
             await factory.createPool(tokenA.address, tokenB.address, fee, "DesireSwap LP: TOKENA-TOKENB","DS_TA-TB_LP");
-            console.log("tu")
             const poolAddress = await factory.poolAddress(tokenA.address, tokenB.address, fee);
             console.log('Pool address: %s', poolAddress);
 		    const Pool = await ethers.getContractFactory("DesireSwapV0Pool");
 		    const pool = await Pool.attach(poolAddress);
         console.log("done")
 
+
 		console.log("initializing pool....");
             await pool.initialize(initialized);
         console.log("done");
-        
-        for (let step = 1; step < 10; step++){
-            let user = users[step]
-            //console.log(user.address);
-            await tokenA.connect(owner).transfer(user.address, tokenSupply);
-            await tokenB.connect(owner).transfer(user.address, tokenSupply);
 
-            await tokenA.connect(user).approve(liqManager.address, tokenSupply);
-            await tokenB.connect(user).approve(liqManager.address, tokenSupply);
-            await tokenA.connect(user).approve(router.address, tokenSupply);
-            await tokenB.connect(user).approve(router.address, tokenSupply);
-        }
-            await tokenA.connect(owner).approve(router.address, tokenSupply);
-            await tokenB.connect(owner).approve(router.address, tokenSupply);
 
-            console.log("firstSupply")
-            await liqManager.connect(A9).supply({
+            await tokenA.connect(owner).approve(liqManager.address, tokenSupply);
+            await tokenB.connect(owner).approve(liqManager.address, tokenSupply);
+
+            const token0 = tokenA.address < tokenB.address ? tokenA : tokenB;
+            const token1 = tokenA.address > tokenB.address ? tokenA : tokenB;
+
+            
+        for( let step = 0; step < 10; step++){
+            await liqManager.connect(owner).supply({
                 "token0": tokenA.address,
                 "token1": tokenB.address,
                 "fee": fee,
-                "lowestRangeIndex" : 0 + initialized,
-                "highestRangeIndex": 0 + initialized,
-                "liqToAdd": "10000000",
-                "amount0Max":"100000000000000000000000",
-                "amount1Max": "10000000000000000000000000",
-                "recipient": A9.address,
+                "lowestRangeIndex" : -20*step + initialized,
+                "highestRangeIndex": 20*step + initialized,
+                "liqToAdd": "10000000000000000000000000000",
+                "amount0Max":"100000000000000000000000000000000000",
+                "amount1Max": "10000000000000000000000000000000000",
+                "recipient": owner.address,
                 "deadline": "1000000000000000000000000"
             });
-            consoleBalances(poolAddress, tokenA, tokenB);
-            await pool.connect(owner).activate(activate);
-            await pool.connect(owner).activate(-activate);
-
-            for(let i = 0;  i < 4; i++){
-                for(let step = 0; step < 2; step++){
-                    let provider = users[2*i+1];
-                    
-                    let data= await lmHelper.token1Supply(tokenA.address, tokenB.address, fee, BigNumber.from("100000000").div(10).toString(), -2*(i+1)*(step+1) + initialized, 2*(i+1)*(step+1) + initialized);
-                    let {0:liqToAdd, 1: amount1} = data;
-                    console.log(liqToAdd.toString());
-
-                    await liqManager.connect(provider).supply({
-                        "token0": tokenA.address,
-                        "token1": tokenB.address,
-                        "fee": fee,
-                        "lowestRangeIndex" : -2*(i+1)*(step+1) + initialized,
-                        "highestRangeIndex": 2*(i+1)*(step+1) + initialized,
-                        "liqToAdd": liqToAdd.toString(),
-                        "amount0Max":tokenSupply,
-                        "amount1Max": tokenSupply,
-                        "recipient": provider.address,
-                        "deadline": "1000000000000000000000000"
-                    });
-                    await consoleBalances(pool.address, tokenA, tokenB);
-                }
-            }
-
-        
-        
-    
+        await consoleBalances(pool.address, tokenA, tokenB);    
+        }
+        const DATA = await viewer.getPositionDataList(poolAddress, owner.address);
+        console.log(DATA);
     });
 });
 

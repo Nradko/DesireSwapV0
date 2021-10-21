@@ -36,7 +36,7 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
   }
 
   function addPoolType(uint256 fee_, uint256 ticksInRange_) external override onlyBy(owner) {
-    require(feeToTicksInRange[fee_] == 0);
+    require(feeToTicksInRange[fee_] == 0, 'DSV0Factory(addPoolType)');
     feeToTicksInRange[fee_] = ticksInRange_;
     emit NewPoolType(ticksInRange_, fee_);
   }

@@ -24,9 +24,12 @@ interface ITicket {
   function getTicketSupplyData(uint256 ticketId, int24 index) external view returns (uint256);
 
   /// doc in TicketId;
-  function getAddressLength(address owner_) external view returns (uint256);
+  function getAddressTicketsAmount(address owner_) external view returns (uint256);
 
   function getAddressTickets(address owner_, uint256 position_) external view returns (uint256);
 
   function getTicketPosition(uint256 ticketId_) external view returns (uint256);
+
+  function getAddressTicketIdList(address owner_) external view returns(uint256[] memory ticketIdList);
+
 }

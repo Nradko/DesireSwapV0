@@ -8,8 +8,6 @@
  *******************************************************/
 pragma solidity ^0.8.0;
 
-import 'hardhat/console.sol';
-
 library PoolHelper {
   uint256 private constant DD = 10**36;
   uint256 private constant D = 10**18;
