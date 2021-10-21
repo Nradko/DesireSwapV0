@@ -1,10 +1,10 @@
 /*******************************************************
  * Copyright (C) 2021-2022 Konrad Wierzbik <desired.desire@protonmail.com>
  *
- * This file is part of DesireSwapProject.
+ * This file is part of DesireSwapProject and was developed by Konrad Konrad Wierzbik.
  *
- * DesireSwapProject can not be copied and/or distributed without the express
- * permission of Konrad Wierzbik
+ * DesireSwapProject files that are said to be developed by Konrad Wierzbik can not be copied 
+ * and/or distributed without the express permission of Konrad Wierzbik.
  *******************************************************/
 pragma solidity ^0.8.0;
 

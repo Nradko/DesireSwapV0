@@ -1,10 +1,10 @@
 /*******************************************************
  * Copyright (C) 2021-2022 Konrad Wierzbik <desired.desire@protonmail.com>
  *
- * This file is part of DesireSwapProject.
+ * This file is part of DesireSwapProject and was developed by Konrad Konrad Wierzbik.
  *
- * DesireSwapProject can not be copied and/or distributed without the express
- * permission of Konrad Wierzbik
+ * DesireSwapProject files that are said to be developed by Konrad Wierzbik can not be copied 
+ * and/or distributed without the express permission of Konrad Wierzbik.
  *******************************************************/
 
 pragma solidity ^0.8.0;
@@ -34,7 +34,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   uint256 private constant d = 10**9;
   uint256 private constant D = 10**18;
   uint256 private constant DD = 10**36;
-  uint256 private constant tickSize = 1000049998750062496;
+  uint256 private constant TICK_SIZE = 1000049998750062496;
   uint256 private immutable ticksInRange;
   uint256 public immutable override sqrtRangeMultiplier; // example: 100100000.... is 1.001 (* 10**)
   uint256 public immutable override feePercentage; //  0 fee is 0 // 100% fee is 1* 10**18;
@@ -77,7 +77,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     ticksInRange = ticksInRange_;
     uint256 sqrtRangeMultiplier_ = D;
     while (ticksInRange_ > 0) {
-      sqrtRangeMultiplier_ = (sqrtRangeMultiplier_ * tickSize) / D;
+      sqrtRangeMultiplier_ = (sqrtRangeMultiplier_ * TICK_SIZE) / D;
       ticksInRange_--;
     }
     sqrtRangeMultiplier = sqrtRangeMultiplier_;
@@ -226,7 +226,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   ///
 
 
-  struct helpData {
+  struct HelpData {
     uint256 lastBalance0;
     uint256 lastBalance1;
     uint256 balance0;
@@ -250,7 +250,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 
     require(amountOut > 0, 'DSV0POOL(swapInRange): try different amount IN');
     require(index == inUseRange, 'DSV0POOL(swapInRange): WI');
-    helpData memory h = helpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: 0, balance1: 0, value00: 0, value01: 0, value10: 0, value11: 0});
+    HelpData memory h = HelpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: 0, balance1: 0, value00: 0, value01: 0, value10: 0, value11: 0});
 
     (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(index);  // reserve0, reserve1, sqrtPriceBot, sqrtPriceTop
     require((zeroForOne && amountOut <= h.value01) || (!zeroForOne && amountOut <= h.value00), 'DSV0POOL(swapInRange): INSUFFICIENT_POSITION_LIQ');
@@ -289,7 +289,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   // amount > 0 amount is exact token inflow, amount < 0 amount is exact token outflow.
   // sqrtPriceLimit is price
 
-  struct swapParams {
+  struct SwapParams {
     address to;
     bool zeroForOne;
     int256 amount;
@@ -304,8 +304,8 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     bytes calldata data
   ) external override returns (int256, int256) {
     if (msg.sender != swapRouter) require(IDesireSwapV0Factory(factory).allowlisted(msg.sender), 'DSV0POOL(swap): not_allowlisted');
-    swapParams memory s = swapParams({to: to, zeroForOne: zeroForOne, amount: amount, data: data});
-    helpData memory h = helpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: 0, balance1: 0, value00: 0, value01: 0, value10: 0, value11: 0});
+    SwapParams memory s = SwapParams({to: to, zeroForOne: zeroForOne, amount: amount, data: data});
+    HelpData memory h = HelpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: 0, balance1: 0, value00: 0, value01: 0, value10: 0, value11: 0});
     uint256 usingReserve;
     uint256 amountRecieved;
     uint256 amountSend;
@@ -452,7 +452,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 
     require(initialized, 'DSV0POOL(mint): not_initialized');
     require(highestRangeIndex >= lowestRangeIndex, 'DSV0POOL(mint): Indexes');
-    helpData memory h = helpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: 0, balance1: 0, value00: 0, value01: 0, value10: 0, value11: 0});
+    HelpData memory h = HelpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: 0, balance1: 0, value00: 0, value01: 0, value10: 0, value11: 0});
     ticketId = _nextTicketId++;
     _safeMint(to, ticketId);
     int24 usingRange = inUseRange;
@@ -546,7 +546,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   function burn(address to, uint256 ticketId) external override returns (uint256, uint256) {
     require(_exists(ticketId), 'POOL(burn): 0');
     require(_isApprovedOrOwner(_msgSender(), ticketId), 'POOL(burn): 1');
-    helpData memory h = helpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: 0, balance1: 0, value00: 0, value01: 0, value10: 0, value11: 0});
+    HelpData memory h = HelpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: 0, balance1: 0, value00: 0, value01: 0, value10: 0, value11: 0});
     int24 usingRange = inUseRange;
 
     int24 highestRangeIndex = _ticketData[ticketId].highestRangeIndex;

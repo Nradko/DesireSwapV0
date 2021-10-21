@@ -1,10 +1,10 @@
 /*******************************************************
  * Copyright (C) 2021-2022 Konrad Wierzbik <desired.desire@protonmail.com>
  *
- * This file is part of DesireSwapProject.
+ * This file is part of DesireSwapProject and was developed by Konrad Konrad Wierzbik.
  *
- * DesireSwapProject can not be copied and/or distributed without the express
- * permission of Konrad Wierzbik
+ * DesireSwapProject files that are said to be developed by Konrad Wierzbik can not be copied 
+ * and/or distributed without the express permission of Konrad Wierzbik.
  *******************************************************/
 pragma solidity ^0.8.0;
 
@@ -25,7 +25,7 @@ contract SwapRouterHelper is ISwapRouterHelper {
     factory = factory_;
   }
 
-  struct helpData {
+  struct HelpData {
     uint256 lastBalance0;
     uint256 lastBalance1;
     uint256 balance0;
@@ -52,7 +52,7 @@ contract SwapRouterHelper is ISwapRouterHelper {
     uint256 amountOut
   ) private view returns (uint256 amountIn, int24 indexReturn) {
     require(amountOut > 0, 'DSV0POOL(swapInRange): try different amount IN');
-    helpData memory h;
+    HelpData memory h;
     (h.lastBalance0, h.lastBalance1) = pool.getLastBalances();
     (h.value00, h.value01, h.value10, h.value11, , ) = pool.getFullRangeInfo(index);
     require((zeroForOne && amountOut <= h.value01) || (!zeroForOne && amountOut <= h.value00), 'DSV0POOL(swapInRange): INSUFFICIENT_POSITION_LIQ');
@@ -73,7 +73,7 @@ contract SwapRouterHelper is ISwapRouterHelper {
     delete h;
   }
 
-  struct swapParams {
+  struct SwapParams {
     IDesireSwapV0Pool pool;
     bool zeroForOne;
     int256 amount;
@@ -90,8 +90,8 @@ contract SwapRouterHelper is ISwapRouterHelper {
   ) public view override returns (int256, int256) {
     IDesireSwapV0Pool pool = getPool(tokenA, tokenB, fee);
     uint256 feePercentage = pool.feePercentage();
-    swapParams memory s = swapParams({pool: pool, zeroForOne: zeroForOne, amount: amount, sqrtPriceLimit: sqrtPriceLimit});
-    helpData memory h;
+    SwapParams memory s = SwapParams({pool: pool, zeroForOne: zeroForOne, amount: amount, sqrtPriceLimit: sqrtPriceLimit});
+    HelpData memory h;
     (h.lastBalance0, h.lastBalance1) = pool.getLastBalances();
     uint256 usingReserve;
     uint256 amountRecieved;

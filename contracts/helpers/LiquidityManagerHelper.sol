@@ -1,10 +1,10 @@
 /*******************************************************
  * Copyright (C) 2021-2022 Konrad Wierzbik <desired.desire@protonmail.com>
  *
- * This file is part of DesireSwapProject.
+ * This file is part of DesireSwapProject and was developed by Konrad Konrad Wierzbik.
  *
- * DesireSwapProject can not be copied and/or distributed without the express
- * permission of Konrad Wierzbik
+ * DesireSwapProject files that are said to be developed by Konrad Wierzbik can not be copied 
+ * and/or distributed without the express permission of Konrad Wierzbik.
  *******************************************************/
 pragma solidity ^0.8.0;
 
@@ -55,7 +55,7 @@ contract LiquidityManagerHelper is ILiquidityManagerHelper {
     //   console.log(r.reserve1);
     //   console.log(r.sqrtPriceBottom);
     //   console.log(r.sqrtPriceTop);
-    uint256 L = PoolHelper.LiqCoefficient(r.reserve0, r.reserve1, r.sqrtPriceBottom, r.sqrtPriceTop);
+    uint256 L = PoolHelper.liqCoefficient(r.reserve0, r.reserve1, r.sqrtPriceBottom, r.sqrtPriceTop);
     //   console.log(L);
     sqrtPrice = PoolHelper.sqrt((L * L) / (r.reserve0 + (L * D) / r.sqrtPriceTop)**2) * D;
   }
@@ -124,7 +124,7 @@ contract LiquidityManagerHelper is ILiquidityManagerHelper {
       }
 
       r = getFullRangeInfo(poolAddress, usingRange);
-      uint256 LiqCoefBefore = PoolHelper.LiqCoefficient(r.reserve0, r.reserve1, r.sqrtPriceBottom, r.sqrtPriceTop);
+      uint256 LiqCoefBefore = PoolHelper.liqCoefficient(r.reserve0, r.reserve1, r.sqrtPriceBottom, r.sqrtPriceTop);
       uint256 amount0ToAdd;
       uint256 amount1ToAdd;
       if (r.reserve0 == 0 && r.reserve1 == 0) {

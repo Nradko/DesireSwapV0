@@ -21,7 +21,7 @@ contract LiquidityManager is ILiquidityManager, PeripheryImmutableState, Periphe
   ///////////
   function uint2str(uint _i) internal pure returns (string memory _uintAsString) {
         if (_i == 0) {
-            return "0";
+            return '0';
         }
         uint j = _i;
         uint len;

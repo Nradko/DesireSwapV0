@@ -1,6 +1,8 @@
 import { HardhatUserConfig } from 'hardhat/types/config';
 import { task } from 'hardhat/config';
 
+require('hardhat-gas-reporter');
+require('@nomiclabs/hardhat-etherscan');
 import '@nomiclabs/hardhat-waffle';
 import '@typechain/hardhat';
 import '@nomiclabs/hardhat-ethers';

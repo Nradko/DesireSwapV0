@@ -1,3 +1,11 @@
+/*******************************************************
+ * Copyright (C) 2021-2022 Konrad Wierzbik <desired.desire@protonmail.com>
+ *
+ * This file is part of DesireSwapProject and was developed by Konrad Konrad Wierzbik.
+ *
+ * DesireSwapProject files that are said to be developed by Konrad Wierzbik can not be copied 
+ * and/or distributed without the express permission of Konrad Wierzbik.
+ *******************************************************/
 pragma solidity ^0.8.0;
 
 import '../interfaces/IDesireSwapV0Pool.sol';
@@ -25,7 +33,7 @@ contract PositionViewer {
     returns(uint256){
         IDesireSwapV0Pool pool = IDesireSwapV0Pool(poolAddress);
         (uint256 reserve0, uint256 reserve1, uint256 sqrt0, uint256 sqrt1 , , ) = pool.getFullRangeInfo(pool.inUseRange());
-        uint256 L = PoolHelper.LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
+        uint256 L = PoolHelper.liqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
         return (L*D/(reserve1 + L*sqrt0/D));
     }
 
