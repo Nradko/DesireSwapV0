@@ -73,15 +73,12 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     swapRouter = swapRouter_;
     token0 = token0_;
     token1 = token1_;
-    ticksInRange = ticksInRange_;
     feePercentage = feePercentage_;
-    uint256 sqrtRangeMultiplier_ = D;
-    while (ticksInRange_ > 0) {
-      sqrtRangeMultiplier_ = (sqrtRangeMultiplier_ * tickSize) / D;
-      console.log(sqrtRangeMultiplier_);
-      ticksInRange_--;
+    ticksInRange = ticksInRange_;
+    sqrtRangeMultiplier = D;
+    for(uint256 i = 0; i < ticksInRange; i++) {
+      sqrtRangeMultiplier = (sqrtRangeMultiplier * tickSize) / D;
     }
-    sqrtRangeMultiplier = sqrtRangeMultiplier_;
   }
 
   ///
@@ -248,21 +245,13 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     bool zeroForOne,
     uint256 amountOut
   ) private returns (uint256 amountIn) {
-    require(amountOut > 0, 'POOL(swapInRange): try different amount IN');
-    require(index == inUseRange, 'POOL(swapInRange): WI');
-    helpData memory h = helpData({
-      lastBalance0: lastBalance0,
-      lastBalance1: lastBalance1,
-      balance0: 0,
-      balance1: 0,
-      value00: ranges[index].reserve0,
-      value01: ranges[index].reserve1,
-      value10: ranges[index].sqrtPriceBottom,
-      value11: 0
-    });
 
-    h.value11 = (h.value10 * sqrtRangeMultiplier) / D;
-    require((zeroForOne && amountOut <= h.value01) || (!zeroForOne && amountOut <= h.value00), 'POOL(swapInRange): INSUFFICIENT_POSITION_LIQ');
+    require(amountOut > 0, 'DSV0POOL(swapInRange): try different amount IN');
+    require(index == inUseRange, 'DSV0POOL(swapInRange): WI');
+    helpData memory h = helpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: 0, balance1: 0, value00: 0, value01: 0, value10: 0, value11: 0});
+
+    (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(index);  // reserve0, reserve1, sqrtPriceBot, sqrtPriceTop
+    require((zeroForOne && amountOut <= h.value01) || (!zeroForOne && amountOut <= h.value00), 'DSV0POOL(swapInRange): INSUFFICIENT_POSITION_LIQ');
     uint256 amountInHelp = PoolHelper.AmountIn(zeroForOne, h.value00, h.value01, h.value10, h.value11, amountOut); // do not include fees;
     uint256 collectedFee = (amountInHelp * feePercentage) / D;
     amountIn = amountInHelp + collectedFee;
@@ -312,8 +301,8 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     int256 amount,
     bytes calldata data
   ) external override returns (int256, int256) {
-    if (msg.sender != swapRouter) require(IDesireSwapV0Factory(factory).whitelisted(msg.sender), 'POOL(swap): not_whitelisted');
-    swapParams memory s = swapParams({to: to, zeroForOne: zeroForOne, amount: amount, data: data});
+    if (msg.sender != swapRouter) require(IDesireSwapV0Factory(factory).allowlisted(msg.sender), 'DSV0POOL(swap): not_allowlisted');
+    swapParams memory s = swapParams({to: to, zeroForOne: zeroForOne, amount: amount, sqrtPriceLimit: sqrtPriceLimit, data: data});
     helpData memory h = helpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: 0, balance1: 0, value00: 0, value01: 0, value10: 0, value11: 0});
     uint256 usingReserve;
     uint256 amountRecieved;
@@ -400,8 +389,8 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   ) private returns (uint256 amount0ToAdd) {
     if (!ranges[index].activated) activate(index);
     (
-      uint256 reserve0, /*unused*/
-      ,
+      uint256 reserve0, 
+      /*unused*/,
       uint256 sqrtPriceBottom,
       uint256 sqrtPriceTop
     ) = getRangeInfo(index);
@@ -424,8 +413,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   ) private returns (uint256 amount1ToAdd) {
     if (!ranges[index].activated) activate(index);
     (
-      ,
-      /*unused*/
+      /*unused*/,
       uint256 reserve1,
       uint256 sqrtPriceBottom,
       uint256 sqrtPriceTop
@@ -459,11 +447,12 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       uint256 amount1
     )
   {
-    require(initialized, 'POOL(mint): not_initialized');
-    require(highestRangeIndex >= lowestRangeIndex, 'POOL(mint): Indexes');
-    helpData memory h = helpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: balance0(), balance1: balance1(), value00: 0, value01: 0, value10: 0, value11: 0});
-    ticketId = getNextTicketId();
-    _safeMint(to, _nextTicketId++);
+
+    require(initialized, 'DSV0POOL(mint): not_initialized');
+    require(highestRangeIndex >= lowestRangeIndex, 'DSV0POOL(mint): Indexes');
+    helpData memory h = helpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: 0, balance1: 0, value00: 0, value01: 0, value10: 0, value11: 0});
+    ticketId = _nextTicketId++;
+    _safeMint(to, ticketId);
     int24 usingRange = inUseRange;
     _ticketData[ticketId].lowestRangeIndex = lowestRangeIndex;
     _ticketData[ticketId].highestRangeIndex = highestRangeIndex;
@@ -487,7 +476,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         amount1 += _printOnTicket1(i, ticketId, liqToAdd);
       }
       if (!ranges[usingRange].activated) activate(usingRange);
-      (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(usingRange);
+      (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(usingRange);  // reserve0, reserve1, sqrtPriceBot, sqrtPriceTop
       uint256 LiqCoefBefore = PoolHelper.LiqCoefficient(h.value00, h.value01, h.value10, h.value11);
       uint256 amount0ToAdd;
       uint256 amount1ToAdd;
@@ -555,9 +544,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   function burn(address to, uint256 ticketId) external override returns (uint256, uint256) {
     require(_exists(ticketId), 'POOL(burn): 0');
     require(_isApprovedOrOwner(_msgSender(), ticketId), 'POOL(burn): 1');
-    helpData memory h;
-    h.lastBalance0 = lastBalance0;
-    h.lastBalance1 = lastBalance1;
+    helpData memory h = helpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: 0, balance1: 0, value00: 0, value01: 0, value10: 0, value11: 0});
     int24 usingRange = inUseRange;
 
     int24 highestRangeIndex = _ticketData[ticketId].highestRangeIndex;

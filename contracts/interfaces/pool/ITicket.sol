@@ -8,6 +8,7 @@ interface ITicket {
     uint256 liqAdded;
   }
 
+  /// @notice returns the nextId that will be assigned to next minted Ticket
   /// @return the nextId
   function getNextTicketId() external view returns (uint256);
 
