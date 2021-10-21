@@ -60,6 +60,7 @@ contract LiquidityManager is ILiquidityManager, PeripheryImmutableState, Periphe
     if (amount1Owed > 0) pay(decoded.poolKey.token1, decoded.payer, msg.sender, amount1Owed);
   }
 
+  // inherit doc from ILiquidityManager
   function supply(SupplyParams calldata params)
     external
     payable
@@ -80,7 +81,6 @@ contract LiquidityManager is ILiquidityManager, PeripheryImmutableState, Periphe
     (ticketId, amount0, amount1) = pool.mint(params.recipient, params.lowestRangeIndex, params.highestRangeIndex, params.liqToAdd, abi.encode(MintCallbackData({poolKey: poolKey, payer: msg.sender})));
     require(amount0 <= params.amount0Max, uint2str(amount0));
     require(amount1 <= params.amount1Max, uint2str(amount1));
-
     ticketId = pool.getNextTicketId() - 1;
     emit Supply(params.recipient, poolAddress, ticketId);
   }

@@ -73,12 +73,11 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     swapRouter = swapRouter_;
     token0 = token0_;
     token1 = token1_;
-    ticksInRange = ticksInRange_;
     feePercentage = feePercentage_;
+    ticksInRange = ticksInRange_;
     uint256 sqrtRangeMultiplier_ = D;
-    while (ticksInRange_ > 0) {
+    for(uint256 i = 0; i < ticksInRange; i++) {
       sqrtRangeMultiplier_ = (sqrtRangeMultiplier_ * tickSize) / D;
-      ticksInRange_--;
     }
     sqrtRangeMultiplier = sqrtRangeMultiplier_;
   }
@@ -86,24 +85,29 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   ///
   /// VIEW
   ///
+  /// inherit doc from IDesreSwapV0Pool
   function balance0() public view override returns (uint256) {
     return IERC20(token0).balanceOf(address(this));
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function balance1() public view override returns (uint256) {
     return IERC20(token1).balanceOf(address(this));
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function getLastBalances() external view override returns (uint256 _lastBalance0, uint256 _lastBalance1) {
     _lastBalance0 = lastBalance0;
     _lastBalance1 = lastBalance1;
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function getTotalReserves() external view override returns (uint256 _totalReserve0, uint256 _totalReserve1) {
     _totalReserve0 = totalReserve0;
     _totalReserve1 = totalReserve1;
   }
 
+  /// note returns data of range with index = index
   function getRangeInfo(int24 index)
     private
     view
@@ -120,6 +124,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     _sqrtPriceTop = (_sqrtPriceBottom * sqrtRangeMultiplier) / D;
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function getFullRangeInfo(int24 index)
     external
     view
@@ -141,6 +146,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     _activated = ranges[index].activated;
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function inUseInfo()
     public
     view
@@ -164,11 +170,13 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   ///
   /// private
   ///
+  /// note updates lastBalances
   function _updateLastBalances(uint256 _lastBalance0, uint256 _lastBalance1) private {
     lastBalance0 = _lastBalance0;
     lastBalance1 = _lastBalance1;
   }
 
+  /// note modifyRangeReserves and changes the inUsePosition if reserves are used
   function _modifyRangeReserves(
     int24 index,
     uint256 toAdd0,
@@ -194,21 +202,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     }
   }
 
-  ///
-  /// Range activation
-  ///
-  function activatePrivate(int24 index) private {
-    require(!ranges[index].activated, 'POOL(activatePrivate): PAA');
-    if (index > highestActivatedRange) {
-      if (!ranges[index - 1].activated) activate(index - 1);
-      ranges[index].sqrtPriceBottom = (ranges[index - 1].sqrtPriceBottom * sqrtRangeMultiplier) / D;
-    } else if (index < lowestActivatedRange) {
-      if (!ranges[index + 1].activated) activate(index + 1);
-      ranges[index].sqrtPriceBottom = (ranges[index + 1].sqrtPriceBottom * D) / sqrtRangeMultiplier;
-    }
-    ranges[index].activated = true;
-  }
-
+  /// note activates the ranges up/down to range with index = index
   function activate(int24 index) public override {
     require(!ranges[index].activated, 'POOL(activate): PAA');
     if (index > highestActivatedRange) {
@@ -230,14 +224,6 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   /// POOL ACTIONS
   ///
 
-  /// Swapping
-
-  // below function make swap inside only one position. It is used to make "whole" swap.
-  // it swaps token0 to token1 if zeroForOne, else it swaps token1 to token 0.
-  // it swaps tokensForExactTokens only.
-  // amountOut is amount transfered to address "to"
-  // !! IT TRANSFERS TOKENS OUT OF POOL !!
-  // !! IT MODIFIES IMPORTANT DATA !!
 
   struct helpData {
     uint256 lastBalance0;
@@ -250,26 +236,23 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     uint256 value11;
   }
 
+  /// @notice this method is used to perfom swaps. it changes data of range by amountOut and amountIn
+  /// @param index of range which data will be modified
+  /// @param zeroForOne swapping token0 for token1 (true) ot token1 for token0 (false)
+  /// @param amountOut amountOut of token that goes out of pool that should be transferred out
+  /// @param amountIn retuns amountIn of token that enters the pool that should be transfered in
   function _swapInRange(
     int24 index,
     bool zeroForOne,
     uint256 amountOut
   ) private returns (uint256 amountIn) {
-    require(amountOut > 0, 'POOL(swapInRange): try different amount IN');
-    require(index == inUseRange, 'POOL(swapInRange): WI');
-    helpData memory h = helpData({
-      lastBalance0: lastBalance0,
-      lastBalance1: lastBalance1,
-      balance0: 0,
-      balance1: 0,
-      value00: ranges[index].reserve0,
-      value01: ranges[index].reserve1,
-      value10: ranges[index].sqrtPriceBottom,
-      value11: 0
-    });
 
-    h.value11 = (h.value10 * sqrtRangeMultiplier) / D;
-    require((zeroForOne && amountOut <= h.value01) || (!zeroForOne && amountOut <= h.value00), 'POOL(swapInRange): INSUFFICIENT_POSITION_LIQ');
+    require(amountOut > 0, 'DSV0POOL(swapInRange): try different amount IN');
+    require(index == inUseRange, 'DSV0POOL(swapInRange): WI');
+    helpData memory h = helpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: 0, balance1: 0, value00: 0, value01: 0, value10: 0, value11: 0});
+
+    (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(index);  // reserve0, reserve1, sqrtPriceBot, sqrtPriceTop
+    require((zeroForOne && amountOut <= h.value01) || (!zeroForOne && amountOut <= h.value00), 'DSV0POOL(swapInRange): INSUFFICIENT_POSITION_LIQ');
     uint256 amountInHelp = PoolHelper.AmountIn(zeroForOne, h.value00, h.value01, h.value10, h.value11, amountOut); // do not include fees;
     uint256 collectedFee = (amountInHelp * feePercentage) / D;
     amountIn = amountInHelp + collectedFee;
@@ -309,19 +292,18 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     address to;
     bool zeroForOne;
     int256 amount;
-    uint256 sqrtPriceLimit;
     bytes data;
   }
 
+/// inherit doc from IDesreSwapV0Pool
   function swap(
     address to,
     bool zeroForOne,
     int256 amount,
-    uint256 sqrtPriceLimit,
     bytes calldata data
   ) external override returns (int256, int256) {
-    if (msg.sender != swapRouter) require(IDesireSwapV0Factory(factory).whitelisted(msg.sender), 'POOL(swap): not_whitelisted');
-    swapParams memory s = swapParams({to: to, zeroForOne: zeroForOne, amount: amount, sqrtPriceLimit: sqrtPriceLimit, data: data});
+    if (msg.sender != swapRouter) require(IDesireSwapV0Factory(factory).allowlisted(msg.sender), 'DSV0POOL(swap): not_allowlisted');
+    swapParams memory s = swapParams({to: to, zeroForOne: zeroForOne, amount: amount, data: data});
     helpData memory h = helpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: 0, balance1: 0, value00: 0, value01: 0, value10: 0, value11: 0});
     uint256 usingReserve;
     uint256 amountRecieved;
@@ -341,10 +323,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         require(remained <= totalReserve0, 'POOL(swap): TR0');
         usingReserve = ranges[usingRange].reserve0;
       }
-      while (
-        remained > usingReserve &&
-        ((s.zeroForOne ? sqrtPriceLimit > (ranges[usingRange].sqrtPriceBottom * sqrtRangeMultiplier) / D : sqrtPriceLimit < ranges[usingRange].sqrtPriceBottom) || sqrtPriceLimit == 0)
-      ) {
+      while (remained > usingReserve) {
         amountRecieved += _swapInRange(usingRange, s.zeroForOne, usingReserve);
         remained -= usingReserve;
         usingRange = inUseRange;
@@ -362,10 +341,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(usingRange);
       uint256 amountOut = PoolHelper.AmountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained - predictedFee);
       require(amountOut <= (s.zeroForOne ? totalReserve1 : totalReserve0), 'POOL(swap): totalReserve to small');
-      while (
-        amountOut > (s.zeroForOne ? h.value01 : h.value00) &&
-        ((s.zeroForOne ? sqrtPriceLimit > (ranges[usingRange].sqrtPriceBottom * sqrtRangeMultiplier) / D : sqrtPriceLimit < ranges[usingRange].sqrtPriceBottom) || sqrtPriceLimit == 0)
-      ) {
+      while (amountOut > (s.zeroForOne ? h.value01 : h.value00)) {
         remained -= _swapInRange(usingRange, s.zeroForOne, s.zeroForOne ? h.value01 : h.value00);
         amountSend += s.zeroForOne ? h.value01 : h.value00;
         predictedFee = (remained * feePercentage) / D;
@@ -378,7 +354,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       remained -= help;
       amountSend += amountOut;
       amountRecieved = uint256(s.amount) - remained;
-    }
+      }
     //!!!
     TransferHelper.safeTransfer(s.zeroForOne ? token1 : token0, s.to, amountSend);
     IDesireSwapV0SwapCallback(msg.sender).desireSwapV0SwapCallback(s.zeroForOne ? int256(amountRecieved) : -int256(amountSend), s.zeroForOne ? -int256(amountSend) : int256(amountRecieved), data);
@@ -406,10 +382,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   ///	ADD LIQUIDITY
   ///
 
-  //  The proof of being LP is Ticket that stores information of how much liquidity was provided.
-  //  It is minted when L is provided.
-  //  It is burned when L is taken.
-
+  /// @notice this method  is writing data down on ticket while performing mint
   function _printOnTicket0(
     int24 index,
     uint256 ticketId,
@@ -417,8 +390,8 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   ) private returns (uint256 amount0ToAdd) {
     if (!ranges[index].activated) activate(index);
     (
-      uint256 reserve0, /*unused*/
-      ,
+      uint256 reserve0, 
+      /*unused*/,
       uint256 sqrtPriceBottom,
       uint256 sqrtPriceTop
     ) = getRangeInfo(index);
@@ -433,6 +406,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     _modifyRangeReserves(index, amount0ToAdd, 0, true, true, false);
   }
 
+  /// @notice this method  is writing data down on ticket while performing mint
   function _printOnTicket1(
     int24 index,
     uint256 ticketId,
@@ -440,8 +414,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   ) private returns (uint256 amount1ToAdd) {
     if (!ranges[index].activated) activate(index);
     (
-      ,
-      /*unused*/
+      /*unused*/,
       uint256 reserve1,
       uint256 sqrtPriceBottom,
       uint256 sqrtPriceTop
@@ -459,6 +432,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     _modifyRangeReserves(index, 0, amount1ToAdd, true, true, false);
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function mint(
     address to,
     int24 lowestRangeIndex,
@@ -474,11 +448,12 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       uint256 amount1
     )
   {
-    require(initialized, 'POOL(mint): not_initialized');
-    require(highestRangeIndex >= lowestRangeIndex, 'POOL(mint): Indexes');
-    helpData memory h = helpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: balance0(), balance1: balance1(), value00: 0, value01: 0, value10: 0, value11: 0});
-    ticketId = getNextTicketId();
-    _safeMint(to, _nextTicketId++);
+
+    require(initialized, 'DSV0POOL(mint): not_initialized');
+    require(highestRangeIndex >= lowestRangeIndex, 'DSV0POOL(mint): Indexes');
+    helpData memory h = helpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: 0, balance1: 0, value00: 0, value01: 0, value10: 0, value11: 0});
+    ticketId = _nextTicketId++;
+    _safeMint(to, ticketId);
     int24 usingRange = inUseRange;
     _ticketData[ticketId].lowestRangeIndex = lowestRangeIndex;
     _ticketData[ticketId].highestRangeIndex = highestRangeIndex;
@@ -502,7 +477,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         amount1 += _printOnTicket1(i, ticketId, liqToAdd);
       }
       if (!ranges[usingRange].activated) activate(usingRange);
-      (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(usingRange);
+      (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(usingRange);  // reserve0, reserve1, sqrtPriceBot, sqrtPriceTop
       uint256 LiqCoefBefore = PoolHelper.LiqCoefficient(h.value00, h.value01, h.value10, h.value11);
       uint256 amount0ToAdd;
       uint256 amount1ToAdd;
@@ -540,7 +515,12 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   ///
   ///	REDEEM LIQ
   ///
-  // zeroOrOne 0=false if only token0 in reserves, 1=true if only token 1 in reserves.
+  
+  /// @notice method that reads from ticket data used for ranges out of current Price
+  /// @param index of range that we are reading from
+  /// @param ticketId Id of ticket that is beeing burned
+  /// @param sendZero if only token 0 should be send (true) or only token1 (false)
+  /// @return amountToTransfer amount that should be transfer out of pool.
   function _readTicket(
     int24 index,
     uint256 ticketId,
@@ -561,12 +541,11 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     ranges[index].supplyCoefficient -= supply;
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function burn(address to, uint256 ticketId) external override returns (uint256, uint256) {
     require(_exists(ticketId), 'POOL(burn): 0');
     require(_isApprovedOrOwner(_msgSender(), ticketId), 'POOL(burn): 1');
-    helpData memory h;
-    h.lastBalance0 = lastBalance0;
-    h.lastBalance1 = lastBalance1;
+    helpData memory h = helpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: 0, balance1: 0, value00: 0, value01: 0, value10: 0, value11: 0});
     int24 usingRange = inUseRange;
 
     int24 highestRangeIndex = _ticketData[ticketId].highestRangeIndex;
@@ -613,9 +592,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     return (amount0, amount1);
   }
 
-  //
-  // FLASH
-  //
+  /// inherit doc from IDesreSwapV0Pool
   function flash(
     address recipient,
     uint256 amount0,
@@ -641,13 +618,16 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     uint256 paid0 = balance0After - balance0Before;
     uint256 paid1 = balance1After - balance1Before;
 
+    _updateLastBalances(balance0After, balance1After);
+
     emit Flash(msg.sender, recipient, amount0, amount1, paid0, paid1);
   }
 
   ///
   /// OWNER ACTIONS
   ///
-  //initialize helper
+
+  /// note method that is used during initialization to calculated priceRanges of starting Range
   function startingSqrtPriceBottom(int24 _startingInUseRange) private view returns (uint256 startingSqrtPriceBottom_) {
     startingSqrtPriceBottom_ = D;
     uint256 multiplier = sqrtRangeMultiplier;
@@ -662,6 +642,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     return startingSqrtPriceBottom_;
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function initialize(int24 _startingInUseRange) external override {
     require(msg.sender == IDesireSwapV0Factory(factory).owner(), 'POOL(initialize): err1');
     require(initialized == false, 'POOL(initialized): err2');
@@ -673,6 +654,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     lowestActivatedRange = _startingInUseRange;
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function collectFee(address token, uint256 amount) external override {
     require(msg.sender == IDesireSwapV0Factory(factory).owner(), 'POOL(collectFee): err1');
     TransferHelper.safeTransfer(token, IDesireSwapV0Factory(factory).feeCollector(), amount);
@@ -680,12 +662,14 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     emit CollectFee(token, amount);
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function setProtocolFee(bool _protocolFeeIsOn, uint256 _protocolFeePart) external override {
     require(msg.sender == IDesireSwapV0Factory(factory).owner(), 'POOL(serProtocolFee): err');
     protocolFeeIsOn = _protocolFeeIsOn;
     protocolFeePart = _protocolFeePart;
   }
 
+  /// inherit doc from IDesreSwapV0Pool
   function setSwapRouter() external override {
     swapRouter = IDesireSwapV0Factory(factory).swapRouter();
   }

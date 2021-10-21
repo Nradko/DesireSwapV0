@@ -70,12 +70,8 @@ contract LiquidityManagerHelper is ILiquidityManagerHelper {
   ) public view override returns (uint256 liqToAdd, uint256 amount1) {
     address poolAddress = getPoolAddress(tokenA, tokenB, fee);
     (uint256 amount0Help, uint256 amount1Help) = supply(poolAddress, lowestRangeIndex, highestRangeIndex);
-    // console.log(amount0Help);
-    // console.log(amount1Help);
     liqToAdd = (D * d * amount0) / amount0Help;
     amount1 = (amount1Help * amount0) / amount0Help;
-    // console.log(liqToAdd);
-    // console.log(amount0);
   }
 
   function token1Supply(
