@@ -8,8 +8,6 @@
  *******************************************************/
 pragma solidity ^0.8.0;
 
-import 'hardhat/console.sol';
-
 library PoolHelper {
   uint256 private constant DD = 10**36;
   uint256 private constant D = 10**18;
@@ -76,14 +74,17 @@ library PoolHelper {
   }
 
   /* UNUSED
-    function currentPrice(
+    function currentSqrtPrice(
         uint256 reserve0, uint256 reserve1,
         uint256 sqrt0, uint256 sqrt1)
         internal pure
         returns (uint256)
     {
-        uint256 L = LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
-        return (L*L/(reserve1 + L*sqrt0/DD)**2);
+      // first calculate Lq Coef with higher pecision
+      uint256 b = (x * sqrt0) + (y * DD) / sqrt1;
+      uint256 _sqrt = sqrt(b**2 + 4 * ((x * y * (DD - (sqrt0 * DD) / sqrt1))));
+      uint256 L = (((b + _sqrt) * D) / (2 * (D - (D * sqrt0) / sqrt1)));
+      return (L/(reserve1 + L*sqrt0/D));
     }
     */
   // returns amount of token0 in that would be in range if all token0 were taken out

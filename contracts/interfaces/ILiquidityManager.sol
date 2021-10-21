@@ -31,6 +31,7 @@ interface ILiquidityManager is IDesireSwapV0MintCallback {
     uint256 deadline;
   }
 
+  /// @notice supplies the pool by calling mint method. 
   function supply(SupplyParams calldata params)
     external
     payable

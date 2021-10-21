@@ -5,6 +5,7 @@ import './Pool.sol';
 import './interfaces/IPoolDeployer.sol';
 
 contract PoolDeployer is IPoolDeployer {
+    /// inherit doc from IPoolDeployer
   function deployPool(
     address factory_,
     address swapRouter_,
