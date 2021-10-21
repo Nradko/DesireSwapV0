@@ -78,7 +78,6 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     uint256 sqrtRangeMultiplier_ = D;
     while (ticksInRange_ > 0) {
       sqrtRangeMultiplier_ = (sqrtRangeMultiplier_ * tickSize) / D;
-      console.log(sqrtRangeMultiplier_);
       ticksInRange_--;
     }
     sqrtRangeMultiplier = sqrtRangeMultiplier_;
