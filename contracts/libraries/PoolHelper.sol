@@ -31,7 +31,7 @@ library PoolHelper {
   }
 
   //  "real LiqCoef"
-  function LiqCoefficient(
+  function liqCoefficient(
     uint256 x,
     uint256 y,
     uint256 sqrt0,

@@ -76,8 +76,9 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     feePercentage = feePercentage_;
     ticksInRange = ticksInRange_;
     uint256 sqrtRangeMultiplier_ = D;
-    for(uint256 i = 0; i < ticksInRange; i++) {
+    while (ticksInRange_ > 0) {
       sqrtRangeMultiplier_ = (sqrtRangeMultiplier_ * tickSize) / D;
+      ticksInRange_--;
     }
     sqrtRangeMultiplier = sqrtRangeMultiplier_;
   }
@@ -161,7 +162,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   {
     usingRange = inUseRange * int24(int256(ticksInRange));
     (uint256 reserve0, uint256 reserve1, uint256 sqrt0, uint256 sqrt1) = getRangeInfo(usingRange);
-    inUseLiq = PoolHelper.LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
+    inUseLiq = PoolHelper.liqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
     sqrtCurrentPrice = (inUseLiq * D) / (reserve0 + (inUseLiq * D) / sqrt1);
     inUseReserve0 = reserve0;
     inUseReserve1 = reserve1;
@@ -262,7 +263,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     if (zeroForOne) {
       //??
       require(
-        PoolHelper.LiqCoefficient(h.value00 + amountInHelp, h.value01 - amountOut, h.value10, h.value11) >= PoolHelper.LiqCoefficient(h.value00, h.value01, h.value10, h.value11),
+        PoolHelper.liqCoefficient(h.value00 + amountInHelp, h.value01 - amountOut, h.value10, h.value11) >= PoolHelper.liqCoefficient(h.value00, h.value01, h.value10, h.value11),
         'POOL(swapInRange): LIQ_COEFFICIENT_IS_TOO_LOW'
       ); //assure that after swap there is more o r equal liquidity. If PoolHelper.AmountIn works correctly it can be removed.
       //!!
@@ -273,7 +274,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     else {
       //??
       require(
-        PoolHelper.LiqCoefficient(h.value00 - amountOut, h.value01 + amountInHelp, h.value10, h.value11) >= PoolHelper.LiqCoefficient(h.value00, h.value01, h.value10, h.value11),
+        PoolHelper.liqCoefficient(h.value00 - amountOut, h.value01 + amountInHelp, h.value10, h.value11) >= PoolHelper.liqCoefficient(h.value00, h.value01, h.value10, h.value11),
         'POOL(swapInRange): LIQ_COEFFICIENT_IS_TOO_LOW'
       ); //assure that after swap there is more or equal liquidity. If PoolHelper.AmountIn works correctly it can be removed.
       //!!
@@ -399,7 +400,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     if (ranges[index].supplyCoefficient != 0) {
       _ticketSupplyData[ticketId][index] = (ranges[index].supplyCoefficient * amount0ToAdd) / reserve0;
     } else {
-      _ticketSupplyData[ticketId][index] = PoolHelper.LiqCoefficient(amount0ToAdd, 0, sqrtPriceBottom, sqrtPriceTop);
+      _ticketSupplyData[ticketId][index] = PoolHelper.liqCoefficient(amount0ToAdd, 0, sqrtPriceBottom, sqrtPriceTop);
     }
     ranges[index].supplyCoefficient += _ticketSupplyData[ticketId][index];
     //!!
@@ -425,7 +426,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     if (ranges[index].supplyCoefficient != 0) {
       _ticketSupplyData[ticketId][index] = (ranges[index].supplyCoefficient * amount1ToAdd) / reserve1;
     } else {
-      _ticketSupplyData[ticketId][index] = PoolHelper.LiqCoefficient(0, amount1ToAdd, sqrtPriceBottom, sqrtPriceTop);
+      _ticketSupplyData[ticketId][index] = PoolHelper.liqCoefficient(0, amount1ToAdd, sqrtPriceBottom, sqrtPriceTop);
     }
     ranges[index].supplyCoefficient += _ticketSupplyData[ticketId][index];
     //!!
@@ -478,24 +479,24 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       }
       if (!ranges[usingRange].activated) activate(usingRange);
       (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(usingRange);  // reserve0, reserve1, sqrtPriceBot, sqrtPriceTop
-      uint256 LiqCoefBefore = PoolHelper.LiqCoefficient(h.value00, h.value01, h.value10, h.value11);
+      uint256 liqCoefBefore = PoolHelper.liqCoefficient(h.value00, h.value01, h.value10, h.value11);
       uint256 amount0ToAdd;
       uint256 amount1ToAdd;
       if (h.value00 == 0 && h.value01 == 0) {
         amount0ToAdd = (liqToAdd * D * (h.value11 - h.value10)) / (h.value10 * h.value11) / 2;
         amount1ToAdd = (liqToAdd * (h.value11 - h.value10)) / D / 2;
       } else {
-        amount0ToAdd = (liqToAdd * h.value00) / LiqCoefBefore;
-        amount1ToAdd = (liqToAdd * h.value01) / LiqCoefBefore;
+        amount0ToAdd = (liqToAdd * h.value00) / liqCoefBefore;
+        amount1ToAdd = (liqToAdd * h.value01) / liqCoefBefore;
       }
-      uint256 LiqCoefAfter = PoolHelper.LiqCoefficient(h.value00 + amount0ToAdd, h.value01 + amount1ToAdd, h.value10, h.value11);
-      // require(LiqCoefAfter >= LiqCoefBefore + liqToAdd, "DesireSwapV0: LIQ_ERROR");
+      uint256 liqCoefAfter = PoolHelper.liqCoefficient(h.value00 + amount0ToAdd, h.value01 + amount1ToAdd, h.value10, h.value11);
+      // require(liqCoefAfter >= liqCoefBefore + liqToAdd, "DesireSwapV0: LIQ_ERROR");
       amount0 += amount0ToAdd;
       amount1 += amount1ToAdd;
       if (ranges[usingRange].supplyCoefficient != 0) {
-        _ticketSupplyData[ticketId][usingRange] = (ranges[usingRange].supplyCoefficient * (LiqCoefAfter - LiqCoefBefore)) / LiqCoefBefore;
+        _ticketSupplyData[ticketId][usingRange] = (ranges[usingRange].supplyCoefficient * (liqCoefAfter - liqCoefBefore)) / liqCoefBefore;
       } else {
-        _ticketSupplyData[ticketId][usingRange] = LiqCoefAfter;
+        _ticketSupplyData[ticketId][usingRange] = liqCoefAfter;
       }
       //!!
       ranges[usingRange].supplyCoefficient += _ticketSupplyData[ticketId][usingRange];
