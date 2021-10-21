@@ -19,7 +19,7 @@ task('accounts', 'Prints the list of accounts', async (taskArgs, hre) => {
 });
 
 const INFURA_URL = 'https://rinkeby.infura.io/v3/b8d988be9f2d4bdf9f13f4d1341f1060';
-const PRIVATE_KEY = '0xc127f74ddcb1d2386137c3b02b790f8314df725786a912ca0d89335bfd16eb62';
+const PRIVATE_KEY = '7563313c3fdc1fbda51327c8f14420b7af84c7650c7cb38b353361d2b5185ea3';
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -35,6 +35,7 @@ const config: HardhatUserConfig = {
     rinkeby: {
       url: INFURA_URL,
       accounts: [PRIVATE_KEY],
+      gas: 10000000,
     },
   },
   contractSizer: {
