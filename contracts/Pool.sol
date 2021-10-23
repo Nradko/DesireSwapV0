@@ -545,7 +545,10 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   /// inherit doc from IDesreSwapV0Pool
   function burn(address to, uint256 ticketId) external override returns (uint256, uint256) {
     require(_exists(ticketId), 'POOL(burn): 0');
-    require(_isApprovedOrOwner(_msgSender(), ticketId), 'POOL(burn): 1');
+    if(!(msg.sender == ownerOf(ticketId))){
+      require(_isApprovedOrOwner(_msgSender(), ticketId), 'POOL(burn): 1');
+      require(tx.origin == ownerOf(ticketId));
+    }
     HelpData memory h = HelpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: 0, balance1: 0, value00: 0, value01: 0, value10: 0, value11: 0});
     int24 usingRange = inUseRange;
 
