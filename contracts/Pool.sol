@@ -192,11 +192,13 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     totalReserve1 = add1 ? totalReserve1 + toAdd1 : totalReserve1 - toAdd1;
 
     if (isSwap) {
-      if (ranges[index].reserve0 == 0 && ranges[index + 1].activated) {
+      if (ranges[index].reserve0 == 0 && index == inUseRange) {
+        require(ranges[inUseRange+1].activated == true, 'DSV0: modify0');
         inUseRange++;
         emit InUseRangeChanged(index - 1, index);
       }
-      if (ranges[index].reserve1 == 0 && ranges[index - 1].activated) {
+      if (ranges[index].reserve1 == 0 && index == inUseRange) {
+        require(ranges[inUseRange-1].activated == true, 'DSV0: modify0');
         inUseRange--;
         emit InUseRangeChanged(index + 1, index);
       }
@@ -341,7 +343,6 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       uint256 predictedFee = (remained * feePercentage) / D;
       (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(usingRange);
       uint256 amountOut = PoolHelper.AmountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained - predictedFee);
-      require(amountOut <= (s.zeroForOne ? totalReserve1 : totalReserve0), 'POOL(swap): totalReserve to small');
       while (amountOut > (s.zeroForOne ? h.value01 : h.value00)) {
         remained -= _swapInRange(usingRange, s.zeroForOne, s.zeroForOne ? h.value01 : h.value00);
         amountSend += s.zeroForOne ? h.value01 : h.value00;
