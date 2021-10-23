@@ -60,7 +60,7 @@ describe('Pool Tests', async function () {
         });
 
         for (let init = 0; init < initArguments.length; init++) {
-          it('should initialize correct range with correct sqrtPriceBottom for init' + init, async function () {
+          it('should initialize correct range with correct sqrtPriceBottom for init = ' + init, async function () {
             await pool.connect(owner).initialize(initArguments[init]);
             got = await pool.getFullRangeInfo(initArguments[init]);
             let { 0: reserve0, 1: reserve1, 2: sqrt0, 3: sqrt1, 4: supCoef, 5: active } = got;
