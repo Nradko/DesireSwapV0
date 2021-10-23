@@ -192,15 +192,13 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     totalReserve1 = add1 ? totalReserve1 + toAdd1 : totalReserve1 - toAdd1;
 
     if (isSwap) {
-      if (ranges[index].reserve0 == 0 && index == inUseRange) {
-        require(ranges[inUseRange+1].activated == true, 'DSV0: modify0');
+      if (ranges[index].reserve0 == 0 && ranges[inUseRange+1].reserve0 > 0 && index == inUseRange) {
         inUseRange++;
-        emit InUseRangeChanged(index - 1, index);
+        emit InUseRangeChanged(index, index + 1);
       }
-      if (ranges[index].reserve1 == 0 && index == inUseRange) {
-        require(ranges[inUseRange-1].activated == true, 'DSV0: modify0');
+      if (ranges[index].reserve1 == 0 && ranges[inUseRange-1].reserve1 > 0 && index == inUseRange) {
         inUseRange--;
-        emit InUseRangeChanged(index + 1, index);
+        emit InUseRangeChanged(index, index - 1);
       }
     }
   }

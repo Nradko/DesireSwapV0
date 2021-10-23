@@ -9,6 +9,6 @@ contract TestERC20 is ERC20 {
     string memory symbol_,
     address addr1
   ) ERC20(name_, symbol_) {
-    _mint(addr1, 10**36);
+    _mint(addr1, 10**70);
   }
 }
