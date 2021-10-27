@@ -1,11 +1,15 @@
+// TO DO
+// the tests must be refactored
+// there is a strange behaviour:
+// the test cases are given by const arrays: fees, toInitialize, supplyFromInit
+// it happens that the same test case may pass or be failed depending on the set of all tests <--- bug to be found
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { ethers } from 'hardhat';
-import { Contract } from 'hardhat/internal/hardhat-network/stack-traces/model';
 import { contractNames } from '../scripts/consts';
 import { deployContract } from '../scripts/utils';
-import { DesireSwapV0Factory, DesireSwapV0Pool, IDesireSwapV0Factory, IDesireSwapV0Pool, LiquidityManager, PoolDeployer, SwapRouter, TestERC20 } from '../typechain';
+import { DesireSwapV0Factory, IDesireSwapV0Factory, DesireSwapV0Pool, LiquidityManager, PoolDeployer, SwapRouter, TestERC20 } from '../typechain';
 
 function getRandomInt(max: number) {
   return Math.floor(Math.random() * max);
@@ -13,13 +17,13 @@ function getRandomInt(max: number) {
 
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 const MAX_UINT = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
-const e14 = BigNumber.from(10).pow(14);
-const e18 = BigNumber.from(10).pow(18);
-const fees = [BigNumber.from(4).mul(e14)]; //, BigNumber.from(5).mul(e14), BigNumber.from(30).mul(e14), BigNumber.from(100).mul(e14)];
-const usersTokensAmount = BigNumber.from('1000000000').mul(e18);
+const E14 = BigNumber.from(10).pow(14);
+const E18 = BigNumber.from(10).pow(18);
+const fees = [BigNumber.from(4).mul(E14), BigNumber.from(5).mul(E14), BigNumber.from(30).mul(E14), BigNumber.from(100).mul(E14)];
+const usersTokensAmount = BigNumber.from('1000000000').mul(E18);
 
-const toInitialize = [100];
-const supplyfromInit = [10];
+const toInitialize = [-1000, 100];
+const supplyfromInit = [0, 30];
 for (let init = 0; init < toInitialize.length; init++) {
   for (let poolType = 0; poolType < fees.length; poolType++) {
     for (let sup = 0; sup < supplyfromInit.length; sup++) {
@@ -76,7 +80,7 @@ for (let init = 0; init < toInitialize.length; init++) {
             fee: fees[poolType],
             lowestRangeIndex: toInitialize[init],
             highestRangeIndex: toInitialize[init],
-            liqToAdd: e14,
+            liqToAdd: E14,
             amount0Max: MAX_UINT,
             amount1Max: MAX_UINT,
             recipient: owner.address,
@@ -89,7 +93,9 @@ for (let init = 0; init < toInitialize.length; init++) {
 
         describe('Supplying', async function () {
           it('should fail when deadline is to low', async function () {
-            const liqToAdd = BigNumber.from(getRandomInt(100000)).mul(e14);
+            //Arrange
+            const liqToAdd = BigNumber.from(getRandomInt(100000)).mul(E14);
+            //Act && Assert
             await expect(
               liqManager.connect(user1).supply({
                 token0: token0.address,
@@ -106,7 +112,8 @@ for (let init = 0; init < toInitialize.length; init++) {
             ).to.be.reverted;
 
             it('should fail when exceeds amount0Max', async function () {
-              const liqToAdd = BigNumber.from(getRandomInt(100000)).mul(e14);
+              //Arrange
+              const liqToAdd = BigNumber.from(getRandomInt(100000)).mul(E14);
               const callstaticData = await liqManager.callStatic.supply({
                 token0: token0.address,
                 token1: token1.address,
@@ -120,7 +127,7 @@ for (let init = 0; init < toInitialize.length; init++) {
                 deadline: MAX_UINT,
               });
               const amounts: BigNumber[] = [callstaticData[2], callstaticData[3]];
-
+              //Act && Assert
               await expect(
                 liqManager.connect(user1).supply({
                   token0: token0.address,
@@ -138,7 +145,8 @@ for (let init = 0; init < toInitialize.length; init++) {
             });
 
             it('should fail when exceeds amount1Max', async function () {
-              const liqToAdd = BigNumber.from(getRandomInt(100000)).mul(e14);
+              //Arrange
+              const liqToAdd = BigNumber.from(getRandomInt(100000)).mul(E14);
               const callstaticData = await liqManager.callStatic.supply({
                 token0: token0.address,
                 token1: token1.address,
@@ -152,7 +160,7 @@ for (let init = 0; init < toInitialize.length; init++) {
                 deadline: MAX_UINT,
               });
               const amounts: BigNumber[] = [callstaticData[2], callstaticData[3]];
-
+              //Act && Assert
               await expect(
                 liqManager.connect(user1).supply({
                   token0: token0.address,
@@ -170,7 +178,8 @@ for (let init = 0; init < toInitialize.length; init++) {
             });
 
             it('should work for correct data', async function () {
-              const liqToAdd = BigNumber.from(getRandomInt(100000)).mul(e14);
+              //Arrange
+              const liqToAdd = BigNumber.from(getRandomInt(100000)).mul(E14);
               const totalReservesBefore = await pool.getTotalReserves();
               const balance0Before = await token0.balanceOf(pool.address);
               const balance1Before = await token1.balanceOf(pool.address);
@@ -188,7 +197,7 @@ for (let init = 0; init < toInitialize.length; init++) {
               });
               const amounts: BigNumber[] = [callstaticData[2], callstaticData[3]];
               const ticketId: BigNumber = callstaticData[1];
-
+              //Act
               await liqManager.connect(user1).supply({
                 token0: token0.address,
                 token1: token1.address,
@@ -206,7 +215,7 @@ for (let init = 0; init < toInitialize.length; init++) {
               const balance0After = await token0.balanceOf(pool.address);
               const balance1After = await token1.balanceOf(pool.address);
               const ticketData = await pool.getTicketData(ticketId);
-
+              //Assert
               expect(balance0After).to.equal(balance0Before.add(amounts[0]));
               expect(balance1After).to.equal(balance1Before.add(amounts[1]));
               expect(totalReservesAfter[0]).to.equal(totalReservesBefore[0].add(amounts[0]));
@@ -222,8 +231,9 @@ for (let init = 0; init < toInitialize.length; init++) {
 
           describe('Supplying and then burning should result in having more or less the same funds (accepted loss < 1/100000)', async function () {
             it('one supply and one burn', async function () {
+              //Arrange
               const ACCEPTED_LOSS = BigNumber.from(100000); //denominator of 1/denominator
-              const liqToAdd = BigNumber.from(getRandomInt(100000)).mul(e14);
+              const liqToAdd = BigNumber.from(getRandomInt(100000)).mul(E14);
               const userBalancesBefore: BigNumber[] = [await token0.balanceOf(pool.address), await token1.balanceOf(pool.address)];
               const callstaticData = await liqManager.callStatic.supply({
                 token0: token0.address,
@@ -239,7 +249,7 @@ for (let init = 0; init < toInitialize.length; init++) {
               });
               const amounts: BigNumber[] = [callstaticData[2], callstaticData[3]];
               const ticketId: BigNumber = callstaticData[1];
-
+              //Act
               await liqManager.connect(user1).supply({
                 token0: token0.address,
                 token1: token1.address,
@@ -255,23 +265,24 @@ for (let init = 0; init < toInitialize.length; init++) {
 
               await pool.connect(user1).burn(user1.address, ticketId.toString());
               const userBalancesAfter = [await token0.balanceOf(pool.address), await token1.balanceOf(pool.address)];
-
+              //Assert
               expect(userBalancesAfter[0].gte(userBalancesBefore[0].sub(amounts[0].div(ACCEPTED_LOSS)))).to.be.true;
               expect(userBalancesAfter[1].gte(userBalancesBefore[1].sub(amounts[1].div(ACCEPTED_LOSS)))).to.be.true;
             });
 
             const NUMBER_OF_SUPPLIES_PER_USER = 5;
             it('5 supplies and then 5 burns per user(3 users)', async function () {
+              //Arrange
               const ACCEPTED_LOSS = BigNumber.from(100000); //denominator of 1/denominator
               let userBalancesBefore: [BigNumber, BigNumber][] = [];
               let userBalancesAfter: [BigNumber, BigNumber][] = [];
               let amounts: [BigNumber, BigNumber][] = [];
               let ticketId: BigNumber[] = [];
-
+              //Act
               for (let num = 0; num < NUMBER_OF_SUPPLIES_PER_USER; num++) {
                 for (let use = 1; use < users.length; use++) {
                   userBalancesBefore.push([await token0.balanceOf(pool.address), await token1.balanceOf(pool.address)]);
-                  const liqToAdd: BigNumber = BigNumber.from(getRandomInt(100000)).mul(e14);
+                  const liqToAdd: BigNumber = BigNumber.from(getRandomInt(100000)).mul(E14);
                   const callstaticData = await liqManager.callStatic.supply({
                     token0: token0.address,
                     token1: token1.address,
@@ -286,7 +297,6 @@ for (let init = 0; init < toInitialize.length; init++) {
                   });
                   amounts.push([callstaticData[2], callstaticData[3]]);
                   ticketId.push(callstaticData[1]);
-
                   await liqManager.connect(users[use]).supply({
                     token0: token0.address,
                     token1: token1.address,
@@ -307,7 +317,7 @@ for (let init = 0; init < toInitialize.length; init++) {
                   userBalancesAfter.push([await token0.balanceOf(pool.address), await token1.balanceOf(pool.address)]);
                 }
               }
-
+              //Assert
               for (let num = 0; num < NUMBER_OF_SUPPLIES_PER_USER; num++) {
                 for (let use = 1; use < users.length; use++) {
                   let i = num * (users.length - 1) + use - 1;

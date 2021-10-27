@@ -1,17 +1,20 @@
+// TO DO
+// the tests must be refactored
+// there is a strange behaviour:
+// the test cases are given by const arrays: fees, toInitialize, supplyFromInit
+// it happens that the same test case may pass or be failed depending on the set of all tests <--- bug to be found
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
-import { BigNumber } from 'ethers';
 import { ethers } from 'hardhat';
-import { Contract } from 'hardhat/internal/hardhat-network/stack-traces/model';
+import { BigNumber } from 'ethers';
 import { contractNames } from '../scripts/consts';
 import { deployContract } from '../scripts/utils';
-import { DesireSwapV0Factory, IDesireSwapV0Factory, IDesireSwapV0Pool, PoolDeployer, SwapRouter, TestERC20 } from '../typechain';
+import { DesireSwapV0Factory, DesireSwapV0Pool, IDesireSwapV0Factory, PoolDeployer, SwapRouter, TestERC20 } from '../typechain';
 
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
-const e18 = BigNumber.from(10).pow(18);
-const e14 = BigNumber.from(10).pow(14);
-const fees = [BigNumber.from(4).mul(e14), BigNumber.from(5).mul(e14), BigNumber.from(30).mul(e14), BigNumber.from(100).mul(e14)];
-const ticksInRange = [1, 10, 50, 200];
+const E18 = BigNumber.from(10).pow(18);
+const E14 = BigNumber.from(10).pow(14);
+const fees = [BigNumber.from(4).mul(E14), BigNumber.from(5).mul(E14), BigNumber.from(30).mul(E14), BigNumber.from(100).mul(E14)];
 const sqrtRangeMultipliers = [BigNumber.from('1000049998750062496'), BigNumber.from('1000500100010000494'), BigNumber.from('1002503002301265502'), BigNumber.from('1010049662092876444')];
 
 describe('Pool Tests', async function () {
@@ -25,11 +28,11 @@ describe('Pool Tests', async function () {
   let user2: SignerWithAddress;
   let user3: SignerWithAddress;
   let poolAddress: string;
-  let pool: any;
+  let pool: DesireSwapV0Pool;
   let Pool: any;
   let got: any;
 
-  const activate = [1, 100, 200];
+  const activate = [1, 200, 400];
   const initArguments = [-1000, -100, 0, 100, 1000];
   const initSqrtMultiplier = [
     ['951231802418720714', '995012727929250863', '1000000000000000000', '1005012269623051144', '1051268468376765990'],
@@ -61,19 +64,20 @@ describe('Pool Tests', async function () {
 
         for (let init = 0; init < initArguments.length; init++) {
           it('should initialize correct range with correct sqrtPriceBottom for init = ' + init, async function () {
+            //Arrange
+            //Act
             await pool.connect(owner).initialize(initArguments[init]);
             got = await pool.getFullRangeInfo(initArguments[init]);
             let { 0: reserve0, 1: reserve1, 2: sqrt0, 3: sqrt1, 4: supCoef, 5: active } = got;
+            //Assert
             expect(await pool.initialized()).to.equal(true);
-            console.log((await pool.sqrtRangeMultiplier()).toString());
-            console.log(initSqrtMultiplier[poolType][init]);
             expect(await pool.lowestActivatedRange()).to.equal(initArguments[init]);
             expect(await pool.highestActivatedRange()).to.equal(initArguments[init]);
             expect((await pool.sqrtRangeMultiplier()).toString()).to.equal(sqrtRangeMultipliers[poolType]);
             expect(reserve0.toString()).to.equal('0');
             expect(reserve1.toString()).to.equal('0');
             expect(sqrt0.toString()).to.equal(initSqrtMultiplier[poolType][init]);
-            expect(sqrt1.toString()).to.equal(sqrt0.mul(BigNumber.from(sqrtRangeMultipliers[poolType])).div(e18));
+            expect(sqrt1.toString()).to.equal(sqrt0.mul(BigNumber.from(sqrtRangeMultipliers[poolType])).div(E18));
             expect(supCoef.toString()).to.equal('0');
             expect(active).to.equal(true);
           });
@@ -97,13 +101,18 @@ describe('Pool Tests', async function () {
 
         for (let init = 0; init < initArguments.length; init++) {
           it('should fail for already activated', async function () {
+            //Act
             await pool.connect(owner).initialize(initArguments[init]);
+            //Assert
             await expect(pool.activate(initArguments[init])).to.be.reverted;
           });
           for (let act = 0; act < activate.length; act++)
             it('activision should work correctly', async function () {
+              //Arrange
               await pool.connect(owner).initialize(initArguments[init]);
+              //Act
               await pool.activate(initArguments[init] + activate[act]);
+              //Assert
               expect(await pool.highestActivatedRange()).to.equal(initArguments[init] + activate[act]);
               expect(await pool.lowestActivatedRange()).to.equal(initArguments[init]);
 

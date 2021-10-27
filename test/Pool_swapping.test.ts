@@ -1,11 +1,15 @@
+// TO DO
+// the tests must be refactored
+// there is a strange behaviour:
+// the test cases are given by const arrays: fees, toInitialize, supplyFromInit
+// it happens that the same test case may pass or be failed depending on the set of all tests <--- bug to be found
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { ethers } from 'hardhat';
-import { Contract } from 'hardhat/internal/hardhat-network/stack-traces/model';
 import { contractNames } from '../scripts/consts';
 import { deployContract } from '../scripts/utils';
-import { DesireSwapV0Factory, DesireSwapV0Pool, IDesireSwapV0Factory, IDesireSwapV0Pool, LiquidityManager, PoolDeployer, SwapRouter, TestERC20 } from '../typechain';
+import { DesireSwapV0Factory, DesireSwapV0Pool, IDesireSwapV0Factory, LiquidityManager, PoolDeployer, SwapRouter, TestERC20 } from '../typechain';
 
 function getRandomInt(max: number) {
   return Math.floor(Math.random() * max);
@@ -13,19 +17,20 @@ function getRandomInt(max: number) {
 
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 const MAX_UINT = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
-const e14 = BigNumber.from(10).pow(14);
-const e18 = BigNumber.from(10).pow(18);
-const fees = [BigNumber.from(4).mul(e14)]; //, BigNumber.from(5).mul(e14), BigNumber.from(30).mul(e14), BigNumber.from(100).mul(e14)];
-const usersTokensAmount = e18.pow(2);
+const e9 = BigNumber.from(10).pow(9);
+const E14 = BigNumber.from(10).pow(14);
+const E18 = BigNumber.from(10).pow(18);
+const fees = [BigNumber.from(4).mul(E14)]; //, BigNumber.from(5).mul(E14), BigNumber.from(30).mul(E14), BigNumber.from(100).mul(E14)];
+const usersTokensAmount = E18.pow(2);
 
-const toInitialize = [100];
-const supplyFromInit = [10];
-for (let init = 0; init < toInitialize.length; init++) {
-  for (let poolType = 0; poolType < fees.length; poolType++) {
+const toInitialize = [1000];
+const supplyFromInit = [0];
+for (let poolType = 0; poolType < fees.length; poolType++) {
+  for (let init = 0; init < toInitialize.length; init++) {
     for (let sup = 0; sup < supplyFromInit.length; sup++) {
       const lowestIndex = toInitialize[init] - supplyFromInit[sup];
       const highestIndex = toInitialize[init] + supplyFromInit[sup];
-      describe('Pool Tests', async function () {
+      describe('Pool Tests: \npoolType: ' + poolType + '\ntoInitialize ->' + toInitialize[init] + '\nsupplyFromInit ->' + supplyFromInit[sup], async function () {
         let deployer: PoolDeployer;
         let factory: IDesireSwapV0Factory;
         let swapRouter: SwapRouter;
@@ -41,9 +46,7 @@ for (let init = 0; init < toInitialize.length; init++) {
         let poolAddress: string;
         let pool: DesireSwapV0Pool;
         let Pool: any;
-        let got: any;
         let users: SignerWithAddress[];
-        let data = ['0', '0'];
 
         beforeEach(async () => {
           [owner, user1, user2, user3] = await ethers.getSigners();
@@ -81,7 +84,7 @@ for (let init = 0; init < toInitialize.length; init++) {
             fee: fees[poolType],
             lowestRangeIndex: toInitialize[init],
             highestRangeIndex: toInitialize[init],
-            liqToAdd: e14,
+            liqToAdd: E14,
             amount0Max: MAX_UINT,
             amount1Max: MAX_UINT,
             recipient: owner.address,
@@ -94,7 +97,7 @@ for (let init = 0; init < toInitialize.length; init++) {
             fee: fees[poolType],
             lowestRangeIndex: toInitialize[init] - supplyFromInit[sup],
             highestRangeIndex: toInitialize[init] + supplyFromInit[sup],
-            liqToAdd: e18.mul(e18),
+            liqToAdd: e9.mul(E18),
             amount0Max: MAX_UINT,
             amount1Max: MAX_UINT,
             recipient: owner.address,
@@ -104,6 +107,7 @@ for (let init = 0; init < toInitialize.length; init++) {
         describe('swap tests', async function () {
           describe('exactOutputSingle test', async function () {
             it('should fail for wrong deadline', async function () {
+              //Act && Assert
               await expect(
                 swapRouter.connect(owner).exactOutputSingle({
                   tokenIn: token1.address,
@@ -119,7 +123,9 @@ for (let init = 0; init < toInitialize.length; init++) {
             });
 
             it('should fail when swapping more then totalReserve0', async function () {
+              //Arrange
               const totalReserves = await pool.getTotalReserves();
+              //Act && Assert
               await expect(
                 swapRouter.connect(owner).exactOutputSingle({
                   tokenIn: token1.address,
@@ -135,7 +141,9 @@ for (let init = 0; init < toInitialize.length; init++) {
             });
 
             it('should fail when swapping more then totalReserve1', async function () {
+              //Arrange
               const totalReserves = await pool.getTotalReserves();
+              //Act && Assert
               await expect(
                 swapRouter.connect(owner).exactOutputSingle({
                   tokenIn: token0.address,
@@ -152,7 +160,9 @@ for (let init = 0; init < toInitialize.length; init++) {
 
             // the -1 below is important so the change of inUsePosition isn't triggered. Such
             it('should work for amountOut = totalReserve0', async function () {
+              //Arrange
               const totalReserves = await pool.getTotalReserves();
+              //Act && Assert
               await swapRouter.connect(owner).exactOutputSingle({
                 tokenIn: token1.address,
                 tokenOut: token0.address,
@@ -166,7 +176,9 @@ for (let init = 0; init < toInitialize.length; init++) {
             });
 
             it('should work for amountOut = totalReserve0', async function () {
+              //Arrange
               const totalReserves = await pool.getTotalReserves();
+              //Act && Assert
               await swapRouter.connect(owner).exactOutputSingle({
                 tokenIn: token0.address,
                 tokenOut: token1.address,
@@ -180,6 +192,7 @@ for (let init = 0; init < toInitialize.length; init++) {
             });
 
             it('should fail when amountInMaximum is exceeded', async function () {
+              //Arrange
               const totalReserves = await pool.getTotalReserves();
               const amountOut: BigNumber = BigNumber.from(getRandomInt(1000000)).mul(totalReserves[1]).div(1000000);
               const amountIn: BigNumber = await swapRouter.callStatic.exactOutputSingle({
@@ -192,12 +205,13 @@ for (let init = 0; init < toInitialize.length; init++) {
                 amountInMaximum: MAX_UINT,
                 sqrtPriceLimitX96: '0',
               });
+              // Act && Assert
               await expect(
-                swapRouter.callStatic.exactOutputSingle({
+                swapRouter.connect(user1).exactOutputSingle({
                   tokenIn: token0.address,
                   tokenOut: token1.address,
                   fee: fees[poolType],
-                  recipient: owner.address,
+                  recipient: user1.address,
                   deadline: MAX_UINT,
                   amountOut: amountOut.toString(),
                   amountInMaximum: amountIn.sub(1).toString(),
@@ -207,6 +221,7 @@ for (let init = 0; init < toInitialize.length; init++) {
             });
 
             it('should fail when amountInMaximum is exceeded', async function () {
+              //Arrange
               const totalReserves = await pool.getTotalReserves();
               const amountOut: BigNumber = BigNumber.from(getRandomInt(1000000)).mul(totalReserves[1]).div(1000000);
               const amountIn: BigNumber = await swapRouter.callStatic.exactOutputSingle({
@@ -219,6 +234,7 @@ for (let init = 0; init < toInitialize.length; init++) {
                 amountInMaximum: MAX_UINT,
                 sqrtPriceLimitX96: '0',
               });
+              // Act && Assert
               await expect(
                 swapRouter.connect(owner).exactOutputSingle({
                   tokenIn: token1.address,
@@ -252,6 +268,7 @@ for (let init = 0; init < toInitialize.length; init++) {
 
             it('should fail when swapping more then totalReserve0', async function () {
               const totalReserves = await pool.getTotalReserves();
+              //Act && Assert
               await expect(
                 swapRouter.connect(owner).exactInputSingle({
                   tokenIn: token1.address,
@@ -268,6 +285,7 @@ for (let init = 0; init < toInitialize.length; init++) {
 
             it('should fail when swapping more then totalReserve1', async function () {
               const totalReserves = await pool.getTotalReserves();
+              //Act && Assert
               it('should fail for wrong deadline', async function () {
                 await expect(
                   swapRouter.connect(owner).exactInputSingle({
@@ -286,6 +304,7 @@ for (let init = 0; init < toInitialize.length; init++) {
 
             it('should work for sufficiently small amountIn', async function () {
               const totalReserves = await pool.getTotalReserves();
+              //Act && Assert
               swapRouter.connect(owner).exactInputSingle({
                 tokenIn: token0.address,
                 tokenOut: token1.address,
@@ -300,6 +319,7 @@ for (let init = 0; init < toInitialize.length; init++) {
 
             it('should work for sufficiently small amountIn', async function () {
               const totalReserves = await pool.getTotalReserves();
+              //Act && Assert
               swapRouter.connect(owner).exactInputSingle({
                 tokenIn: token1.address,
                 tokenOut: token0.address,
@@ -313,6 +333,7 @@ for (let init = 0; init < toInitialize.length; init++) {
             });
 
             it('should fail when amountInMinimum is not exceeded', async function () {
+              //Arrange
               const totalReserves = await pool.getTotalReserves();
               const amountIn: BigNumber = BigNumber.from(getRandomInt(1000000)).mul(totalReserves[1]).div(1000000);
               const amountOut: BigNumber = await swapRouter.callStatic.exactInputSingle({
@@ -325,12 +346,13 @@ for (let init = 0; init < toInitialize.length; init++) {
                 amountOutMinimum: '0',
                 sqrtPriceLimitX96: '0',
               });
+              // Act && Assert
               await expect(
-                swapRouter.callStatic.exactInputSingle({
+                swapRouter.connect(user1).exactInputSingle({
                   tokenIn: token1.address,
                   tokenOut: token0.address,
                   fee: fees[poolType],
-                  recipient: owner.address,
+                  recipient: user1.address,
                   deadline: MAX_UINT,
                   amountIn: amountIn,
                   amountOutMinimum: amountOut.add(1).toString(),
@@ -340,6 +362,7 @@ for (let init = 0; init < toInitialize.length; init++) {
             });
 
             it('should fail when amountInMinimum is not exceeded', async function () {
+              //Arrange
               const totalReserves = await pool.getTotalReserves();
               const amountIn: BigNumber = BigNumber.from(getRandomInt(1000000)).mul(totalReserves[0]).div(1000000);
               const amountOut: BigNumber = await swapRouter.callStatic.exactInputSingle({
@@ -352,12 +375,13 @@ for (let init = 0; init < toInitialize.length; init++) {
                 amountOutMinimum: '0',
                 sqrtPriceLimitX96: '0',
               });
+              //Act && Assert
               await expect(
-                swapRouter.callStatic.exactInputSingle({
+                swapRouter.connect(user1).exactInputSingle({
                   tokenIn: token0.address,
                   tokenOut: token1.address,
                   fee: fees[poolType],
-                  recipient: owner.address,
+                  recipient: user1.address,
                   deadline: MAX_UINT,
                   amountIn: amountIn,
                   amountOutMinimum: amountOut.add(1).toString(),
