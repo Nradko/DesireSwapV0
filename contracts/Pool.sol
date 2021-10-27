@@ -31,9 +31,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   address public immutable override token1;
   address public override swapRouter;
 
-  uint256 private constant d = 10**9;
-  uint256 private constant D = 10**18;
-  uint256 private constant DD = 10**36;
+  uint256 private constant E18 = 10**18;
   uint256 private constant TICK_SIZE = 1000049998750062496;
   uint256 private immutable ticksInRange;
   uint256 public immutable override sqrtRangeMultiplier; // example: 100100000.... is 1.001 (* 10**)
@@ -75,9 +73,9 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     token1 = token1_;
     feePercentage = feePercentage_;
     ticksInRange = ticksInRange_;
-    uint256 sqrtRangeMultiplier_ = D;
+    uint256 sqrtRangeMultiplier_ = E18;
     while (ticksInRange_ > 0) {
-      sqrtRangeMultiplier_ = (sqrtRangeMultiplier_ * TICK_SIZE) / D;
+      sqrtRangeMultiplier_ = (sqrtRangeMultiplier_ * TICK_SIZE) / E18;
       ticksInRange_--;
     }
     sqrtRangeMultiplier = sqrtRangeMultiplier_;
@@ -122,7 +120,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     _reserve0 = ranges[index].reserve0;
     _reserve1 = ranges[index].reserve1;
     _sqrtPriceBottom = ranges[index].sqrtPriceBottom;
-    _sqrtPriceTop = (_sqrtPriceBottom * sqrtRangeMultiplier) / D;
+    _sqrtPriceTop = (_sqrtPriceBottom * sqrtRangeMultiplier) / E18;
   }
 
   /// inherit doc from IDesreSwapV0Pool
@@ -142,7 +140,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     _reserve0 = ranges[index].reserve0;
     _reserve1 = ranges[index].reserve1;
     _sqrtPriceBottom = ranges[index].sqrtPriceBottom;
-    _sqrtPriceTop = (_sqrtPriceBottom * sqrtRangeMultiplier) / D;
+    _sqrtPriceTop = (_sqrtPriceBottom * sqrtRangeMultiplier) / E18;
     _supplyCoefficient = ranges[index].supplyCoefficient;
     _activated = ranges[index].activated;
   }
@@ -163,7 +161,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     usingRange = inUseRange * int24(int256(ticksInRange));
     (uint256 reserve0, uint256 reserve1, uint256 sqrt0, uint256 sqrt1) = getRangeInfo(usingRange);
     inUseLiq = PoolHelper.liqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
-    sqrtCurrentPrice = (inUseLiq * D) / (reserve0 + (inUseLiq * D) / sqrt1);
+    sqrtCurrentPrice = (inUseLiq * E18) / (reserve0 + (inUseLiq * E18) / sqrt1);
     inUseReserve0 = reserve0;
     inUseReserve1 = reserve1;
   }
@@ -208,13 +206,13 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     require(!ranges[index].activated, 'POOL(activate): PAA');
     if (index > highestActivatedRange) {
       for (int24 i = highestActivatedRange + 1; i <= index; i++) {
-        ranges[i].sqrtPriceBottom = (ranges[i - 1].sqrtPriceBottom * sqrtRangeMultiplier) / D;
+        ranges[i].sqrtPriceBottom = (ranges[i - 1].sqrtPriceBottom * sqrtRangeMultiplier) / E18;
         ranges[i].activated = true;
       }
       highestActivatedRange = index;
     } else if (index < lowestActivatedRange) {
       for (int24 i = lowestActivatedRange - 1; i >= index; i--) {
-        ranges[i].sqrtPriceBottom = (ranges[i + 1].sqrtPriceBottom * D) / sqrtRangeMultiplier;
+        ranges[i].sqrtPriceBottom = (ranges[i + 1].sqrtPriceBottom * E18) / sqrtRangeMultiplier;
         ranges[i].activated = true;
       }
       lowestActivatedRange = index;
@@ -255,10 +253,10 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(index);  // reserve0, reserve1, sqrtPriceBot, sqrtPriceTop
     require((zeroForOne && amountOut <= h.value01) || (!zeroForOne && amountOut <= h.value00), 'DSV0POOL(swapInRange): INSUFFICIENT_POSITION_LIQ');
     uint256 amountInHelp = PoolHelper.AmountIn(zeroForOne, h.value00, h.value01, h.value10, h.value11, amountOut); // do not include fees;
-    uint256 collectedFee = (amountInHelp * feePercentage) / D;
+    uint256 collectedFee = (amountInHelp * feePercentage) / E18;
     amountIn = amountInHelp + collectedFee;
     if (protocolFeeIsOn) {
-      amountInHelp = amountIn - (collectedFee * protocolFeePart) / D; //amountIn - protocolFee. It is amount that is added to reserve
+      amountInHelp = amountIn - (collectedFee * protocolFeePart) / E18; //amountIn - protocolFee. It is amount that is added to reserve
     }
     if (zeroForOne) {
       //??
@@ -338,13 +336,13 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     //
     else if (s.amount > 0) {
       remained = uint256(s.amount);
-      uint256 predictedFee = (remained * feePercentage) / D;
+      uint256 predictedFee = (remained * feePercentage) / E18;
       (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(usingRange);
       uint256 amountOut = PoolHelper.AmountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained - predictedFee);
       while (amountOut > (s.zeroForOne ? h.value01 : h.value00)) {
         remained -= _swapInRange(usingRange, s.zeroForOne, s.zeroForOne ? h.value01 : h.value00);
         amountSend += s.zeroForOne ? h.value01 : h.value00;
-        predictedFee = (remained * feePercentage) / D;
+        predictedFee = (remained * feePercentage) / E18;
         usingRange = inUseRange;
         (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(usingRange);
         amountOut = PoolHelper.AmountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained - predictedFee);
@@ -395,13 +393,15 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       uint256 sqrtPriceBottom,
       uint256 sqrtPriceTop
     ) = getRangeInfo(index);
-    amount0ToAdd = (liqToAdd * D * (sqrtPriceTop - sqrtPriceBottom)) / (sqrtPriceBottom * sqrtPriceTop);
+    amount0ToAdd = (liqToAdd * E18 * (sqrtPriceTop - sqrtPriceBottom)) / (sqrtPriceBottom * sqrtPriceTop);
+    uint256 supplyData;
     if (ranges[index].supplyCoefficient != 0) {
-      _ticketSupplyData[ticketId][index] = (ranges[index].supplyCoefficient * amount0ToAdd) / reserve0;
+      supplyData = (ranges[index].supplyCoefficient * amount0ToAdd) / reserve0;
     } else {
-      _ticketSupplyData[ticketId][index] = PoolHelper.liqCoefficient(amount0ToAdd, 0, sqrtPriceBottom, sqrtPriceTop);
+      supplyData = PoolHelper.liqCoefficient(amount0ToAdd, 0, sqrtPriceBottom, sqrtPriceTop);
     }
-    ranges[index].supplyCoefficient += _ticketSupplyData[ticketId][index];
+    _ticketSupplyData[ticketId][index] = supplyData;
+    ranges[index].supplyCoefficient += supplyData;
     //!!
     _modifyRangeReserves(index, amount0ToAdd, 0, true, true, false);
   }
@@ -420,14 +420,15 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       uint256 sqrtPriceTop
     ) = getRangeInfo(index);
 
-    amount1ToAdd = (liqToAdd * (sqrtPriceTop - sqrtPriceBottom)) / D;
-
+    amount1ToAdd = (liqToAdd * (sqrtPriceTop - sqrtPriceBottom)) / E18;
+    uint256 supplyData;
     if (ranges[index].supplyCoefficient != 0) {
-      _ticketSupplyData[ticketId][index] = (ranges[index].supplyCoefficient * amount1ToAdd) / reserve1;
+      supplyData = (ranges[index].supplyCoefficient * amount1ToAdd) / reserve1;
     } else {
-      _ticketSupplyData[ticketId][index] = PoolHelper.liqCoefficient(0, amount1ToAdd, sqrtPriceBottom, sqrtPriceTop);
+      supplyData = PoolHelper.liqCoefficient(0, amount1ToAdd, sqrtPriceBottom, sqrtPriceTop);
     }
-    ranges[index].supplyCoefficient += _ticketSupplyData[ticketId][index];
+    _ticketSupplyData[ticketId][index] = supplyData;
+    ranges[index].supplyCoefficient += supplyData;
     //!!
     _modifyRangeReserves(index, 0, amount1ToAdd, true, true, false);
   }
@@ -481,9 +482,9 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       uint256 liqCoefBefore = PoolHelper.liqCoefficient(h.value00, h.value01, h.value10, h.value11);
       uint256 amount0ToAdd;
       uint256 amount1ToAdd;
-      if (h.value00 == 0 && h.value01 == 0) {
-        amount0ToAdd = (liqToAdd * D * (h.value11 - h.value10)) / (h.value10 * h.value11) / 2;
-        amount1ToAdd = (liqToAdd * (h.value11 - h.value10)) / D / 2;
+      if ( (h.value00 == 0 && h.value01 == 0 ) || liqCoefBefore ==0) {
+        amount0ToAdd = (liqToAdd * E18 * (h.value11 - h.value10)) / (h.value10 * h.value11) / 2;
+        amount1ToAdd = (liqToAdd * (h.value11 - h.value10)) / E18 / 2;
       } else {
         amount0ToAdd = (liqToAdd * h.value00) / liqCoefBefore;
         amount1ToAdd = (liqToAdd * h.value01) / liqCoefBefore;
@@ -492,7 +493,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       // require(liqCoefAfter >= liqCoefBefore + liqToAdd, "DesireSwapV0: LIQ_ERROR");
       amount0 += amount0ToAdd;
       amount1 += amount1ToAdd;
-      if (ranges[usingRange].supplyCoefficient != 0) {
+      if (ranges[usingRange].supplyCoefficient != 0 && liqCoefBefore != 0) {
         _ticketSupplyData[ticketId][usingRange] = (ranges[usingRange].supplyCoefficient * (liqCoefAfter - liqCoefBefore)) / liqCoefBefore;
       } else {
         _ticketSupplyData[ticketId][usingRange] = liqCoefAfter;
@@ -602,8 +603,8 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     uint256 amount1,
     bytes calldata data
   ) external override {
-    uint256 fee0 = (amount0 * feePercentage) / D;
-    uint256 fee1 = (amount1 * feePercentage) / D;
+    uint256 fee0 = (amount0 * feePercentage) / E18;
+    uint256 fee1 = (amount1 * feePercentage) / E18;
     uint256 balance0Before = balance0();
     uint256 balance1Before = balance1();
 
@@ -632,14 +633,14 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 
   /// note method that is used during initialization to calculated priceRanges of starting Range
   function startingSqrtPriceBottom(int24 _startingInUseRange) private view returns (uint256 startingSqrtPriceBottom_) {
-    startingSqrtPriceBottom_ = D;
+    startingSqrtPriceBottom_ = E18;
     uint256 multiplier = sqrtRangeMultiplier;
     while (_startingInUseRange > 0) {
-      startingSqrtPriceBottom_ = (startingSqrtPriceBottom_ * multiplier) / D;
+      startingSqrtPriceBottom_ = (startingSqrtPriceBottom_ * multiplier) / E18;
       _startingInUseRange--;
     }
     while (_startingInUseRange < 0) {
-      startingSqrtPriceBottom_ = (startingSqrtPriceBottom_ * D) / multiplier;
+      startingSqrtPriceBottom_ = (startingSqrtPriceBottom_ * E18) / multiplier;
       _startingInUseRange++;
     }
     return startingSqrtPriceBottom_;
