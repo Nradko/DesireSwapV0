@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import './Pool.sol';
+import './DesireSwapV0Pool.sol';
 import './interfaces/IPoolDeployer.sol';
 
 contract PoolDeployer is IPoolDeployer {

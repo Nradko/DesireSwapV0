@@ -11,7 +11,6 @@ pragma solidity ^0.8.0;
 import '../interfaces/pool/ITicket.sol';
 import '@openzeppelin/contracts/token/ERC721/ERC721.sol';
 
-import 'hardhat/console.sol';
 
 contract Ticket is ERC721, ITicket {
   // struct TicketData can be found in ITicket

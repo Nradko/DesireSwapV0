@@ -16,7 +16,7 @@ import 'hardhat/console.sol';
 
 contract PositionViewer {
 
-    uint256 private constant D = 10**18;
+    uint256 private constant E18 = 10**18;
     struct PositionData {
         address poolAddress;
         address token0;
@@ -34,7 +34,7 @@ contract PositionViewer {
         IDesireSwapV0Pool pool = IDesireSwapV0Pool(poolAddress);
         (uint256 reserve0, uint256 reserve1, uint256 sqrt0, uint256 sqrt1 , , ) = pool.getFullRangeInfo(pool.inUseRange());
         uint256 L = PoolHelper.liqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
-        return (L*D/(reserve1 + L*sqrt0/D));
+        return (L*E18/(reserve1 + L*sqrt0/E18));
     }
 
     function _readTicket(

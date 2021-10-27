@@ -20,7 +20,6 @@ import './interfaces/callback/IDesireSwapV0MintCallback.sol';
 import './interfaces/callback/IDesireSwapV0SwapCallback.sol';
 import './interfaces/callback/IDesireSwapV0FlashCallback.sol';
 
-import 'hardhat/console.sol';
 
 contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   bool public override initialized;

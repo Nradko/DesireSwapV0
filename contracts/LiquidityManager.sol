@@ -12,7 +12,6 @@ import './base/PeripheryValidation.sol';
 import './interfaces/ILiquidityManager.sol';
 
 import './libraries/CallbackValidation.sol';
-import 'hardhat/console.sol';
 
 contract LiquidityManager is ILiquidityManager, PeripheryImmutableState, PeripheryPayments, PeripheryValidation {
   constructor(address _factory, address _WETH9) PeripheryImmutableState(_factory, _WETH9) {}

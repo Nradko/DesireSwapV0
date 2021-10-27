@@ -5,10 +5,10 @@ import '../interfaces/IDesireSwapV0Pool.sol';
 import '../interfaces/IDesireSwapV0Factory.sol';
 import './PoolAddress.sol';
 
-/// @notice Provides validation for callbacks from Uniswap V3 Pools
+/// @notice Provides validation for callbacks from DesireSwap V0 Pools
 library CallbackValidation {
-  /// @notice Returns the address of a valid Uniswap V3 Pool
-  /// @param factory The contract address of the Uniswap V3 factory
+  /// @notice Returns the address of a valid  DesireSwap V0 Pool
+  /// @param factory The contract address of the  DesireSwap V0 factory
   /// @param tokenA The contract address of either token0 or token1
   /// @param tokenB The contract address of the other token
   /// @param fee The fee collected upon every swap in the pool, denominated in hundredths of a bip

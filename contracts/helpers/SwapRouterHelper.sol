@@ -16,8 +16,7 @@ import '../interfaces/ISwapRouterHelper.sol';
 import 'hardhat/console.sol';
 
 contract SwapRouterHelper is ISwapRouterHelper {
-  uint256 private constant D = 10**18;
-  uint256 private constant d = 10**9;
+  uint256 private constant E18 = 10**18;
 
   address public immutable factory;
 
@@ -57,10 +56,10 @@ contract SwapRouterHelper is ISwapRouterHelper {
     (h.value00, h.value01, h.value10, h.value11, , ) = pool.getFullRangeInfo(index);
     require((zeroForOne && amountOut <= h.value01) || (!zeroForOne && amountOut <= h.value00), 'DSV0POOL(swapInRange): INSUFFICIENT_POSITION_LIQ');
     uint256 amountInHelp = PoolHelper.AmountIn(zeroForOne, h.value00, h.value01, h.value10, h.value11, amountOut); // do not include fees;
-    uint256 collectedFee = (amountInHelp * feePercentage) / D;
+    uint256 collectedFee = (amountInHelp * feePercentage) / E18;
     amountIn = amountInHelp + collectedFee;
     if (pool.protocolFeeIsOn()) {
-      amountInHelp = amountIn - (collectedFee * pool.protocolFeePart()) / D; //amountIn - protocolFee. It is amount that is added to reserve
+      amountInHelp = amountIn - (collectedFee * pool.protocolFeePart()) / E18; //amountIn - protocolFee. It is amount that is added to reserve
     }
     if (zeroForOne) {
       require(amountOut <= h.value01, 'DSV0POOL(swapInRange): ETfT error');
@@ -110,7 +109,7 @@ contract SwapRouterHelper is ISwapRouterHelper {
         require(remained <= h.balance0, 'DSV0POOL(swap): TR0');
         (usingReserve, , h.value10, h.value11, , ) = pool.getFullRangeInfo(usingRange);
       }
-      while (remained > usingReserve && ((s.zeroForOne ? sqrtPriceLimit > (h.value11) / D : sqrtPriceLimit < h.value10) || sqrtPriceLimit == 0)) {
+      while (remained > usingReserve && ((s.zeroForOne ? sqrtPriceLimit > (h.value11) / E18 : sqrtPriceLimit < h.value10) || sqrtPriceLimit == 0)) {
         (h.balance0, usingRange) = _swapInRange(s.pool, feePercentage, usingRange, s.zeroForOne, usingReserve);
         amountRecieved += h.balance0;
         remained -= usingReserve;
@@ -126,16 +125,16 @@ contract SwapRouterHelper is ISwapRouterHelper {
     //
     else if (s.amount > 0) {
       remained = uint256(s.amount);
-      uint256 predictedFee = (remained * feePercentage) / D;
+      uint256 predictedFee = (remained * feePercentage) / E18;
       (h.value00, h.value01, h.value10, h.value11, , ) = pool.getFullRangeInfo(usingRange);
       uint256 amountOut = PoolHelper.AmountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained - predictedFee);
       (h.balance0, h.balance1) = pool.getTotalReserves();
       require(amountOut <= (s.zeroForOne ? h.balance1 : h.balance0), 'DSV0POOL(swap): totalReserve to small');
-      while (amountOut > (s.zeroForOne ? h.value01 : h.value00) && ((s.zeroForOne ? sqrtPriceLimit > (h.value11) / D : sqrtPriceLimit < h.value10) || sqrtPriceLimit == 0)) {
+      while (amountOut > (s.zeroForOne ? h.value01 : h.value00) && ((s.zeroForOne ? sqrtPriceLimit > (h.value11) / E18 : sqrtPriceLimit < h.value10) || sqrtPriceLimit == 0)) {
         (h.balance0, usingRange) = _swapInRange(s.pool, feePercentage, usingRange, s.zeroForOne, s.zeroForOne ? h.value01 : h.value00);
         remained -= h.balance0;
         amountSend += s.zeroForOne ? h.value01 : h.value00;
-        predictedFee = (remained * feePercentage) / D;
+        predictedFee = (remained * feePercentage) / E18;
         (h.value00, h.value01, h.value10, h.value11, , ) = pool.getFullRangeInfo(usingRange);
         amountOut = PoolHelper.AmountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained - predictedFee);
       }
