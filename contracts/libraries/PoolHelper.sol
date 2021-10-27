@@ -52,7 +52,7 @@ library PoolHelper {
     uint256 liq = liqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
     require(liq > 0, 'Try different amounts');
     if (zeroForOne) {
-      return ((liq * liq) / (reserve1 + (liq * sqrt0) / E18 - amountOut) - (reserve0 + (liq * E18) / sqrt1)); //dim = 0
+      return ((liq * liq) / (reserve1 + (liq * sqrt0) / E18 - amountOut) - (reserve0 + (liq * E18) / sqrt1)) + 1; //dim = 0
     } else return ((liq * liq) / (reserve0 + (liq * E18) / sqrt1 - amountOut) - (reserve1 + (liq * sqrt0) / E18)); // dim = 0
   }
 
@@ -67,7 +67,7 @@ library PoolHelper {
     uint256 liq = liqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
     require(liq > 0, 'Try different amounts');
     if (zeroForOne) {
-      return ((reserve1 + (liq * sqrt0) / E18) - (liq * liq) / (reserve0 + (liq * E18) / sqrt1 + amountIn));
+      return ((reserve1 + (liq * sqrt0) / E18) - (liq * liq) / (reserve0 + (liq * E18) / sqrt1 + amountIn)) - 1;
     }
     return ((reserve0 + (liq * E18) / sqrt1) - (liq * liq) / (reserve1 + (liq * sqrt0) / E18 + amountIn));
   }
