@@ -12,6 +12,8 @@ import './interfaces/ISwapRouter.sol';
 import './libraries/CallbackValidation.sol';
 import './libraries/Path.sol';
 
+import 'hardhat/console.sol';
+
 
 contract SwapRouter is ISwapRouter, PeripheryImmutableState, PeripheryValidation, PeripheryPayments, Multicall {
   using Path for bytes;

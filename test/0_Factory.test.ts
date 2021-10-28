@@ -15,11 +15,12 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 const E14 = BigNumber.from(10).pow(14);
-const fees = [BigNumber.from(4).mul(E14), BigNumber.from(5).mul(E14), BigNumber.from(30).mul(E14), BigNumber.from(100).mul(E14)];
+const fees = [BigNumber.from(400), BigNumber.from(500), BigNumber.from(3000), BigNumber.from(10000)];
 const ticksInRange = [1, 10, 50, 200];
 const sqrtRangeMultipliers = [BigNumber.from('1000049998750062496'), BigNumber.from('1000500100010000494'), BigNumber.from('1002503002301265502'), BigNumber.from('1010049662092876444')];
+const sqrtRangeMultipliers100 = [BigNumber.from('1005012269623051144'), BigNumber.from('1051268468376765912'), BigNumber.from('1284009367540270688'), BigNumber.from('2718145926825191179')];
 
-describe('Factory testing', async function () {
+describe('0_Factory testing', async function () {
   let deployer: PoolDeployer;
   let factory: IDesireSwapV0Factory;
   let tokenA: TestERC20;
@@ -101,8 +102,8 @@ describe('Factory testing', async function () {
     });
 
     it('addPoolType should work while called properly', async function () {
-      await factory.connect(owner).addPoolType('1000', '1000');
-      expect(await factory.feeToTicksInRange('1000')).to.equal(BigNumber.from('1000'));
+      await factory.connect(owner).addPoolType('3333', '33333');
+      expect(await factory.feeToTicksInRange('3333')).to.equal(BigNumber.from('33333'));
     });
 
     it('createPool should fail while called by not the owner', async function () {
@@ -135,7 +136,8 @@ describe('Factory testing', async function () {
         expect(await pool.swapRouter()).to.equal(swapRouter.address);
         expect(await pool.feePercentage()).to.equal(fees[step]);
         expect(await pool.sqrtRangeMultiplier()).to.equal(sqrtRangeMultipliers[step]);
-        expect(await pool.protocolFeePart()).to.equal(BigNumber.from(2).mul(BigNumber.from(10).pow(17)));
+        expect(await pool.sqrtRangeMultiplier100()).to.equal(sqrtRangeMultipliers100[step]);
+        expect(await pool.protocolFeePart()).to.equal(BigNumber.from(2).mul(BigNumber.from(10).pow(5)));
         expect(await pool.initialized()).to.equal(false);
         expect(await pool.protocolFeeIsOn()).to.equal(true);
       });

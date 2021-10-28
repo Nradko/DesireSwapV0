@@ -16,21 +16,21 @@ function getRandomInt(max: number) {
 }
 
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
-const MAX_UINT = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
-const e9 = BigNumber.from(10).pow(9);
+const MAX_INT = '57896044618658097711785492504343953926634992332820282019728792003956564819967';
+const E9 = BigNumber.from(10).pow(9);
 const E14 = BigNumber.from(10).pow(14);
 const E18 = BigNumber.from(10).pow(18);
-const fees = [BigNumber.from(4).mul(E14)]; //, BigNumber.from(5).mul(E14), BigNumber.from(30).mul(E14), BigNumber.from(100).mul(E14)];
-const usersTokensAmount = E18.pow(2);
+const fees = [BigNumber.from(400), BigNumber.from(500), BigNumber.from(3000), BigNumber.from(10000)];
+const usersTokensAmount = E14.mul(E18);
 
 const toInitialize = [1000];
-const supplyFromInit = [0];
+const supplyFromInit = [10];
 for (let poolType = 0; poolType < fees.length; poolType++) {
   for (let init = 0; init < toInitialize.length; init++) {
     for (let sup = 0; sup < supplyFromInit.length; sup++) {
       const lowestIndex = toInitialize[init] - supplyFromInit[sup];
       const highestIndex = toInitialize[init] + supplyFromInit[sup];
-      describe('Pool Tests: \npoolType: ' + poolType + '\ntoInitialize ->' + toInitialize[init] + '\nsupplyFromInit ->' + supplyFromInit[sup], async function () {
+      describe('3_Pool Tests: \npoolType: ' + poolType + '\ntoInitialize ->' + toInitialize[init] + '\nsupplyFromInit ->' + supplyFromInit[sup], async function () {
         let deployer: PoolDeployer;
         let factory: IDesireSwapV0Factory;
         let swapRouter: SwapRouter;
@@ -64,8 +64,8 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
             await tokenB.connect(owner).transfer(users[i].address, usersTokensAmount);
           }
           for (let i = 0; i < users.length; i++) {
-            await tokenA.connect(users[i]).approve(swapRouter.address, MAX_UINT);
-            await tokenB.connect(users[i]).approve(swapRouter.address, MAX_UINT);
+            await tokenA.connect(users[i]).approve(swapRouter.address, MAX_INT);
+            await tokenB.connect(users[i]).approve(swapRouter.address, MAX_INT);
           }
           await factory.connect(owner).createPool(tokenA.address, tokenB.address, fees[poolType], 'DSV0P: token A/tokenB pair', 'DSP tA-tB ()');
           poolAddress = await factory.poolAddress(tokenA.address, tokenB.address, fees[poolType]);
@@ -76,8 +76,8 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
           await pool.connect(owner).initialize(toInitialize[init]);
           await pool.connect(owner).activate(toInitialize[init] - supplyFromInit[sup] - 1);
           await pool.connect(owner).activate(toInitialize[init] + supplyFromInit[sup] + 1);
-          await tokenA.connect(owner).approve(liqManager.address, MAX_UINT);
-          await tokenB.connect(owner).approve(liqManager.address, MAX_UINT);
+          await tokenA.connect(owner).approve(liqManager.address, MAX_INT);
+          await tokenB.connect(owner).approve(liqManager.address, MAX_INT);
           await liqManager.connect(owner).supply({
             token0: token0.address,
             token1: token1.address,
@@ -85,10 +85,10 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
             lowestRangeIndex: toInitialize[init],
             highestRangeIndex: toInitialize[init],
             liqToAdd: E14,
-            amount0Max: MAX_UINT,
-            amount1Max: MAX_UINT,
+            amount0Max: MAX_INT,
+            amount1Max: MAX_INT,
             recipient: owner.address,
-            deadline: MAX_UINT,
+            deadline: MAX_INT,
           });
 
           await liqManager.connect(owner).supply({
@@ -97,13 +97,14 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
             fee: fees[poolType],
             lowestRangeIndex: toInitialize[init] - supplyFromInit[sup],
             highestRangeIndex: toInitialize[init] + supplyFromInit[sup],
-            liqToAdd: e9.mul(E18),
-            amount0Max: MAX_UINT,
-            amount1Max: MAX_UINT,
+            liqToAdd: E18.mul(E9),
+            amount0Max: MAX_INT,
+            amount1Max: MAX_INT,
             recipient: owner.address,
-            deadline: MAX_UINT,
+            deadline: MAX_INT,
           });
         });
+
         describe('swap tests', async function () {
           describe('exactOutputSingle test', async function () {
             it('should fail for wrong deadline', async function () {
@@ -116,7 +117,7 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
                   recipient: owner.address,
                   deadline: '1',
                   amountOut: '1000',
-                  amountInMaximum: MAX_UINT,
+                  amountInMaximum: MAX_INT,
                   sqrtPriceLimitX96: '0',
                 })
               ).to.be.reverted;
@@ -132,9 +133,9 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
                   tokenOut: token0.address,
                   fee: fees[poolType],
                   recipient: owner.address,
-                  deadline: MAX_UINT,
+                  deadline: MAX_INT,
                   amountOut: totalReserves[0].add(1).toString(),
-                  amountInMaximum: MAX_UINT,
+                  amountInMaximum: MAX_INT,
                   sqrtPriceLimitX96: '0',
                 })
               ).to.be.reverted;
@@ -150,9 +151,9 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
                   tokenOut: token1.address,
                   fee: fees[poolType],
                   recipient: owner.address,
-                  deadline: MAX_UINT,
+                  deadline: MAX_INT,
                   amountOut: totalReserves[1].add(1).toString(),
-                  amountInMaximum: MAX_UINT,
+                  amountInMaximum: MAX_INT,
                   sqrtPriceLimitX96: '0',
                 })
               ).to.be.reverted;
@@ -161,48 +162,54 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
             // the -1 below is important so the change of inUsePosition isn't triggered. Such
             it('should work for amountOut = totalReserve0', async function () {
               //Arrange
-              const totalReserves = await pool.getTotalReserves();
+              let totalReserves = await pool.getTotalReserves();
               //Act && Assert
               await swapRouter.connect(owner).exactOutputSingle({
                 tokenIn: token1.address,
                 tokenOut: token0.address,
                 fee: fees[poolType],
                 recipient: owner.address,
-                deadline: MAX_UINT,
+                deadline: MAX_INT,
                 amountOut: totalReserves[0].toString(),
-                amountInMaximum: MAX_UINT,
+                amountInMaximum: MAX_INT,
                 sqrtPriceLimitX96: '0',
               });
+              totalReserves = await pool.getTotalReserves();
+              expect(totalReserves[0].toString()).to.equal('0');
             });
 
-            it('should work for amountOut = totalReserve0', async function () {
+            it('should work for amountOut = totalReserve1', async function () {
               //Arrange
-              const totalReserves = await pool.getTotalReserves();
+              let totalReserves = await pool.getTotalReserves();
               //Act && Assert
               await swapRouter.connect(owner).exactOutputSingle({
                 tokenIn: token0.address,
                 tokenOut: token1.address,
                 fee: fees[poolType],
                 recipient: owner.address,
-                deadline: MAX_UINT,
+                deadline: MAX_INT,
                 amountOut: totalReserves[1].toString(),
-                amountInMaximum: MAX_UINT,
+                amountInMaximum: MAX_INT,
                 sqrtPriceLimitX96: '0',
               });
+              totalReserves = await pool.getTotalReserves();
+              expect(totalReserves[1].toString()).to.equal('0');
             });
 
             it('should fail when amountInMaximum is exceeded', async function () {
               //Arrange
               const totalReserves = await pool.getTotalReserves();
-              const amountOut: BigNumber = BigNumber.from(getRandomInt(1000000)).mul(totalReserves[1]).div(1000000);
+              const amountOut: BigNumber = BigNumber.from(getRandomInt(999999) + 1)
+                .mul(totalReserves[1])
+                .div(1000000);
               const amountIn: BigNumber = await swapRouter.callStatic.exactOutputSingle({
                 tokenIn: token0.address,
                 tokenOut: token1.address,
                 fee: fees[poolType],
                 recipient: owner.address,
-                deadline: MAX_UINT,
+                deadline: MAX_INT,
                 amountOut: amountOut.toString(),
-                amountInMaximum: MAX_UINT,
+                amountInMaximum: MAX_INT,
                 sqrtPriceLimitX96: '0',
               });
               // Act && Assert
@@ -212,7 +219,7 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
                   tokenOut: token1.address,
                   fee: fees[poolType],
                   recipient: user1.address,
-                  deadline: MAX_UINT,
+                  deadline: MAX_INT,
                   amountOut: amountOut.toString(),
                   amountInMaximum: amountIn.sub(1).toString(),
                   sqrtPriceLimitX96: '0',
@@ -223,15 +230,17 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
             it('should fail when amountInMaximum is exceeded', async function () {
               //Arrange
               const totalReserves = await pool.getTotalReserves();
-              const amountOut: BigNumber = BigNumber.from(getRandomInt(1000000)).mul(totalReserves[1]).div(1000000);
+              const amountOut: BigNumber = BigNumber.from(getRandomInt(999999) + 1)
+                .mul(totalReserves[0])
+                .div(1000000);
               const amountIn: BigNumber = await swapRouter.callStatic.exactOutputSingle({
                 tokenIn: token1.address,
                 tokenOut: token0.address,
                 fee: fees[poolType],
                 recipient: owner.address,
-                deadline: MAX_UINT,
+                deadline: MAX_INT,
                 amountOut: amountOut.toString(),
-                amountInMaximum: MAX_UINT,
+                amountInMaximum: MAX_INT,
                 sqrtPriceLimitX96: '0',
               });
               // Act && Assert
@@ -241,7 +250,7 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
                   tokenOut: token0.address,
                   fee: fees[poolType],
                   recipient: owner.address,
-                  deadline: MAX_UINT,
+                  deadline: MAX_INT,
                   amountOut: amountOut.toString(),
                   amountInMaximum: amountIn.sub(1).toString(),
                   sqrtPriceLimitX96: '0',
@@ -275,8 +284,8 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
                   tokenOut: token0.address,
                   fee: fees[poolType],
                   recipient: owner.address,
-                  deadline: MAX_UINT,
-                  amountIn: MAX_UINT,
+                  deadline: MAX_INT,
+                  amountIn: MAX_INT,
                   amountOutMinimum: '0',
                   sqrtPriceLimitX96: '0',
                 })
@@ -293,8 +302,8 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
                     tokenOut: token1.address,
                     fee: fees[poolType],
                     recipient: owner.address,
-                    deadline: MAX_UINT,
-                    amountIn: MAX_UINT,
+                    deadline: MAX_INT,
+                    amountIn: MAX_INT,
                     amountOutMinimum: '0',
                     sqrtPriceLimitX96: '0',
                   })
@@ -310,7 +319,7 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
                 tokenOut: token1.address,
                 fee: fees[poolType],
                 recipient: owner.address,
-                deadline: MAX_UINT,
+                deadline: MAX_INT,
                 amountIn: totalReserves[0].div(2).toString(),
                 amountOutMinimum: '0',
                 sqrtPriceLimitX96: '0',
@@ -325,7 +334,7 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
                 tokenOut: token0.address,
                 fee: fees[poolType],
                 recipient: owner.address,
-                deadline: MAX_UINT,
+                deadline: MAX_INT,
                 amountIn: totalReserves[1].div(2).toString(),
                 amountOutMinimum: '0',
                 sqrtPriceLimitX96: '0',
@@ -341,7 +350,7 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
                 tokenOut: token0.address,
                 fee: fees[poolType],
                 recipient: owner.address,
-                deadline: MAX_UINT,
+                deadline: MAX_INT,
                 amountIn: amountIn,
                 amountOutMinimum: '0',
                 sqrtPriceLimitX96: '0',
@@ -353,7 +362,7 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
                   tokenOut: token0.address,
                   fee: fees[poolType],
                   recipient: user1.address,
-                  deadline: MAX_UINT,
+                  deadline: MAX_INT,
                   amountIn: amountIn,
                   amountOutMinimum: amountOut.add(1).toString(),
                   sqrtPriceLimitX96: '0',
@@ -370,7 +379,7 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
                 tokenOut: token1.address,
                 fee: fees[poolType],
                 recipient: owner.address,
-                deadline: MAX_UINT,
+                deadline: MAX_INT,
                 amountIn: amountIn,
                 amountOutMinimum: '0',
                 sqrtPriceLimitX96: '0',
@@ -382,7 +391,7 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
                   tokenOut: token1.address,
                   fee: fees[poolType],
                   recipient: user1.address,
-                  deadline: MAX_UINT,
+                  deadline: MAX_INT,
                   amountIn: amountIn,
                   amountOutMinimum: amountOut.add(1).toString(),
                   sqrtPriceLimitX96: '0',

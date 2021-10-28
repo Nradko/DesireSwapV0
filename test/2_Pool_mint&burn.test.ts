@@ -19,75 +19,75 @@ const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 const MAX_UINT = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
 const E14 = BigNumber.from(10).pow(14);
 const E18 = BigNumber.from(10).pow(18);
-const fees = [BigNumber.from(4).mul(E14), BigNumber.from(5).mul(E14), BigNumber.from(30).mul(E14), BigNumber.from(100).mul(E14)];
+const fees = [BigNumber.from(400)]; //, BigNumber.from(500), BigNumber.from(3000), BigNumber.from(10000)];
 const usersTokensAmount = BigNumber.from('1000000000').mul(E18);
 
-const toInitialize = [-1000, 100];
-const supplyfromInit = [0, 30];
+const toInitialize = [-1000]; //, 100];
+const supplyfromInit = [0]; //, 30];
 for (let init = 0; init < toInitialize.length; init++) {
   for (let poolType = 0; poolType < fees.length; poolType++) {
-    for (let sup = 0; sup < supplyfromInit.length; sup++) {
-      describe('Pool Tests', async function () {
-        let deployer: PoolDeployer;
-        let factory: IDesireSwapV0Factory;
-        let swapRouter: SwapRouter;
-        let liqManager: LiquidityManager;
-        let tokenA: TestERC20;
-        let tokenB: TestERC20;
-        let token0: TestERC20;
-        let token1: TestERC20;
-        let owner: SignerWithAddress;
-        let user1: SignerWithAddress;
-        let user2: SignerWithAddress;
-        let user3: SignerWithAddress;
-        let poolAddress: string;
-        let pool: DesireSwapV0Pool;
-        let Pool: any;
-        let got: any;
-        let users: SignerWithAddress[];
-        let data = ['0', '0'];
+    describe('2_Pool Tests', async function () {
+      this.timeout(0);
+      let deployer: PoolDeployer;
+      let factory: IDesireSwapV0Factory;
+      let swapRouter: SwapRouter;
+      let liqManager: LiquidityManager;
+      let tokenA: TestERC20;
+      let tokenB: TestERC20;
+      let token0: TestERC20;
+      let token1: TestERC20;
+      let owner: SignerWithAddress;
+      let user1: SignerWithAddress;
+      let user2: SignerWithAddress;
+      let user3: SignerWithAddress;
+      let poolAddress: string;
+      let pool: DesireSwapV0Pool;
+      let Pool: any;
+      let got: any;
+      let users: SignerWithAddress[];
+      let data = ['0', '0'];
 
-        beforeEach(async () => {
-          [owner, user1, user2, user3] = await ethers.getSigners();
-          users = [owner, user1, user2, user3];
-          deployer = await deployContract<PoolDeployer>(contractNames.poolDeployer);
-          factory = await deployContract<DesireSwapV0Factory>(contractNames.factory, owner.address, deployer.address);
-          swapRouter = await deployContract<SwapRouter>(contractNames.swapRouter, factory.address, ADDRESS_ZERO);
-          liqManager = await deployContract<LiquidityManager>(contractNames.liquidityManager, factory.address, ADDRESS_ZERO);
-          Pool = await ethers.getContractFactory('DesireSwapV0Pool');
-          await factory.connect(owner).setSwapRouter(swapRouter.address);
-          tokenA = await deployContract<TestERC20>(contractNames.token, 'token A', 'tA', owner.address);
-          tokenB = await deployContract<TestERC20>(contractNames.token, 'token B', 'tB', owner.address);
-          for (let i = 1; i < users.length; i++) {
-            await tokenA.connect(owner).transfer(users[i].address, usersTokensAmount);
-            await tokenB.connect(owner).transfer(users[i].address, usersTokensAmount);
-          }
-          for (let i = 0; i < users.length; i++) {
-            await tokenA.connect(users[i]).approve(liqManager.address, MAX_UINT);
-            await tokenB.connect(users[i]).approve(liqManager.address, MAX_UINT);
-          }
-          await factory.connect(owner).createPool(tokenA.address, tokenB.address, fees[poolType], 'DSV0P: token A/tokenB pair', 'DSP tA-tB ()');
-          poolAddress = await factory.poolAddress(tokenA.address, tokenB.address, fees[poolType]);
-          pool = Pool.attach(poolAddress);
-          token0 = tokenA.address < tokenB.address ? tokenA : tokenB;
-          token1 = tokenA.address > tokenB.address ? tokenA : tokenB;
+      beforeEach(async () => {
+        [owner, user1, user2, user3] = await ethers.getSigners();
+        users = [owner, user1, user2, user3];
+        deployer = await deployContract<PoolDeployer>(contractNames.poolDeployer);
+        factory = await deployContract<DesireSwapV0Factory>(contractNames.factory, owner.address, deployer.address);
+        swapRouter = await deployContract<SwapRouter>(contractNames.swapRouter, factory.address, ADDRESS_ZERO);
+        liqManager = await deployContract<LiquidityManager>(contractNames.liquidityManager, factory.address, ADDRESS_ZERO);
+        Pool = await ethers.getContractFactory('DesireSwapV0Pool');
+        await factory.connect(owner).setSwapRouter(swapRouter.address);
+        tokenA = await deployContract<TestERC20>(contractNames.token, 'token A', 'tA', owner.address);
+        tokenB = await deployContract<TestERC20>(contractNames.token, 'token B', 'tB', owner.address);
+        for (let i = 1; i < users.length; i++) {
+          await tokenA.connect(owner).transfer(users[i].address, usersTokensAmount);
+          await tokenB.connect(owner).transfer(users[i].address, usersTokensAmount);
+        }
+        for (let i = 0; i < users.length; i++) {
+          await tokenA.connect(users[i]).approve(liqManager.address, MAX_UINT);
+          await tokenB.connect(users[i]).approve(liqManager.address, MAX_UINT);
+        }
+        await factory.connect(owner).createPool(tokenA.address, tokenB.address, fees[poolType], 'DSV0P: token A/tokenB pair', 'DSP tA-tB ()');
+        poolAddress = await factory.poolAddress(tokenA.address, tokenB.address, fees[poolType]);
+        pool = Pool.attach(poolAddress);
+        token0 = tokenA.address < tokenB.address ? tokenA : tokenB;
+        token1 = tokenA.address > tokenB.address ? tokenA : tokenB;
 
-          await pool.connect(owner).initialize(toInitialize[init]);
+        await pool.connect(owner).initialize(toInitialize[init]);
 
-          await liqManager.connect(owner).supply({
-            token0: token0.address,
-            token1: token1.address,
-            fee: fees[poolType],
-            lowestRangeIndex: toInitialize[init],
-            highestRangeIndex: toInitialize[init],
-            liqToAdd: E14,
-            amount0Max: MAX_UINT,
-            amount1Max: MAX_UINT,
-            recipient: owner.address,
-            deadline: MAX_UINT,
-          });
+        await liqManager.connect(owner).supply({
+          token0: token0.address,
+          token1: token1.address,
+          fee: fees[poolType],
+          lowestRangeIndex: toInitialize[init],
+          highestRangeIndex: toInitialize[init],
+          liqToAdd: E14,
+          amount0Max: MAX_UINT,
+          amount1Max: MAX_UINT,
+          recipient: owner.address,
+          deadline: MAX_UINT,
         });
-
+      });
+      for (let sup = 0; sup < supplyfromInit.length; sup++) {
         const lowestIndex = toInitialize[init] - supplyfromInit[sup];
         const highestIndex = toInitialize[init] + supplyfromInit[sup];
 
@@ -329,7 +329,7 @@ for (let init = 0; init < toInitialize.length; init++) {
             });
           });
         });
-      });
-    }
+      }
+    });
   }
 }

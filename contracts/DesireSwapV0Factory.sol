@@ -28,10 +28,10 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
     feeCollector = _owner;
     emit OwnerChanged(address(0), _owner);
     poolList.push(address(0));
-    feeToTicksInRange[4 * 10**14] = 1;
-    feeToTicksInRange[5 * 10**14] = 10;
-    feeToTicksInRange[3 * 10**15] = 50;
-    feeToTicksInRange[10**16] = 200;
+    feeToTicksInRange[400] = 1;
+    feeToTicksInRange[500] = 10;
+    feeToTicksInRange[3000] = 50;
+    feeToTicksInRange[10000] = 200;
     // to consider: we can also keep a mapping of already calculated sqrtPriceMultipliers
     deployerAddress = deployerAddress_;
   }

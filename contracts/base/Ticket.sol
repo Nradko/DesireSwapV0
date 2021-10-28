@@ -1,3 +1,4 @@
+//"SPDX-License-Identifier: UNLICENSED"
 /*******************************************************
  * Copyright (C) 2021-2022 Konrad Wierzbik <desired.desire@protonmail.com>
  *

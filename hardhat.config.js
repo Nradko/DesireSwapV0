@@ -37,7 +37,7 @@ module.exports = {
     rinkeby: {
       url: INFURA_URL,
       accounts:  [PRIVATE_KEY],
-      gas : 10000000,
+      gas : 30000000,
     }
   },
   etherscan: {

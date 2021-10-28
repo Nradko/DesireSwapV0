@@ -12,19 +12,20 @@ import { deployContract } from '../scripts/utils';
 import { DesireSwapV0Factory, DesireSwapV0Pool, IDesireSwapV0Factory, LiquidityManager, PoolDeployer, SwapRouter, TestERC20 } from '../typechain';
 
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
-const MAX_UINT = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
+const MAX_UINT = '57896044618658097711785492504343953926634992332820282019728792003956564819967'; //Max Int
+const E6 = BigNumber.from(10).pow(6);
 const E14 = BigNumber.from(10).pow(14);
 const E18 = BigNumber.from(10).pow(18);
-const fees = [BigNumber.from(4).mul(E14), BigNumber.from(5).mul(E14), BigNumber.from(30).mul(E14), BigNumber.from(100).mul(E14)];
+const fees = [BigNumber.from(400), BigNumber.from(500), BigNumber.from(3000), BigNumber.from(10000)];
 const usersTokensAmount = E18.pow(2);
-const protocolFee = BigNumber.from(2).mul(E18.div(10)); //1e18
+const protocolFee = BigNumber.from(200000); //1E6
 
 const toInitialize = [-974];
 const supplyFromInit = [3];
 for (let poolType = 0; poolType < fees.length; poolType++) {
   for (let init = 0; init < toInitialize.length; init++) {
     for (let sup = 0; sup < supplyFromInit.length; sup++) {
-      describe('PoolTest', async function () {
+      describe('4_PoolTest', async function () {
         this.timeout(0);
         const lowestIndex = toInitialize[init] - supplyFromInit[sup];
         const highestIndex = toInitialize[init] + supplyFromInit[sup];
@@ -71,7 +72,7 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
           pool = Pool.attach(poolAddress);
           token0 = tokenA.address < tokenB.address ? tokenA : tokenB;
           token1 = tokenA.address > tokenB.address ? tokenA : tokenB;
-
+          console.log('tu0');
           await pool.connect(owner).initialize(toInitialize[init]);
           await pool.connect(owner).activate(toInitialize[init] - supplyFromInit[sup] - 1);
           await pool.connect(owner).activate(toInitialize[init] + supplyFromInit[sup] + 1);
@@ -79,7 +80,7 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
         describe('Pool Test \n Fee test: \n poolType =' + poolType + '\ntoInitialize =' + toInitialize[init] + '\nsupplyFromInit = ' + supplyFromInit[sup], async function () {
           it('accumulation in token1', async function () {
             //Arrange
-            const feeEarning = E18.add(fees[poolType].mul(E18.sub(protocolFee)).div(E18).mul(2)); // we are doing two swaps => .mul(2)
+            const feeEarning = E6.add(fees[poolType].mul(E6.sub(protocolFee)).div(E6).mul(2)); // we are doing two swaps => .mul(2)
             await liqManager.connect(user1).supply({
               token0: token0.address,
               token1: token1.address,
@@ -136,14 +137,14 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
             totalResrves = await pool.getTotalReserves();
             //Assert
             expect(totalResrves[0]).to.equal(totalSupplied[0]);
-            expect(totalResrves[1].gte(totalSupplied[1].mul(feeEarning).div(E18))).to.be.true;
+            expect(totalResrves[1].gte(totalSupplied[1].mul(feeEarning).div(E6))).to.be.true;
           });
         });
         describe('Fee test: \n poolType =' + poolType + '\ntoInitialize =' + toInitialize[init] + '\nsupplyFromInit = ' + supplyFromInit[sup], async function () {
           it('accumulation in token0', async function () {
             //Arrange
             this.timeout(0);
-            const feeEarning = E18.add(fees[poolType].mul(E18.sub(protocolFee)).div(E18).mul(2)); // we are doing two swaps => .mul(2)
+            const feeEarning = E6.add(fees[poolType].mul(E6.sub(protocolFee)).div(E6).mul(2)); // we are doing two swaps => .mul(2)
             await liqManager.connect(user1).supply({
               token0: token0.address,
               token1: token1.address,
@@ -197,7 +198,7 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
             totalResrves = await pool.getTotalReserves();
             //Assert
             expect(totalResrves[1]).to.equal(totalSupplied[1]);
-            expect(totalResrves[0].gte(totalSupplied[0].mul(feeEarning).div(E18))).to.be.true;
+            expect(totalResrves[0].gte(totalSupplied[0].mul(feeEarning).div(E6))).to.be.true;
           });
         });
       });
