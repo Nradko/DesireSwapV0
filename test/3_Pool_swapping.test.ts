@@ -20,7 +20,7 @@ const MAX_INT = '578960446186580977117854925043439539266349923328202820197287920
 const E9 = BigNumber.from(10).pow(9);
 const E14 = BigNumber.from(10).pow(14);
 const E18 = BigNumber.from(10).pow(18);
-const fees = [BigNumber.from(400), BigNumber.from(500), BigNumber.from(3000), BigNumber.from(10000)];
+const fees = [/*BigNumber.from(400), BigNumber.from(500), */ BigNumber.from(3000)];
 const usersTokensAmount = E14.mul(E18);
 
 const toInitialize = [1000];

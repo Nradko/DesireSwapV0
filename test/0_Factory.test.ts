@@ -12,13 +12,12 @@ import 'mocha';
 
 import { BigNumber } from '@ethersproject/bignumber';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { ADDRESS_ZERO } from './testConsts';
 
-const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
-const E14 = BigNumber.from(10).pow(14);
-const fees = [BigNumber.from(400), BigNumber.from(500), BigNumber.from(3000), BigNumber.from(10000)];
-const ticksInRange = [1, 10, 50, 200];
-const sqrtRangeMultipliers = [BigNumber.from('1000049998750062496'), BigNumber.from('1000500100010000494'), BigNumber.from('1002503002301265502'), BigNumber.from('1010049662092876444')];
-const sqrtRangeMultipliers100 = [BigNumber.from('1005012269623051144'), BigNumber.from('1051268468376765912'), BigNumber.from('1284009367540270688'), BigNumber.from('2718145926825191179')];
+const fees = [BigNumber.from(400), BigNumber.from(500), BigNumber.from(3000)];
+const ticksInRange = ['1', '50', '200'];
+const sqrtRangeMultipliers = [BigNumber.from('1000049998750062496'), BigNumber.from('1002503002301265502'), BigNumber.from('1010049662092876444')];
+const sqrtRangeMultipliers100 = [BigNumber.from('1005012269623051144'), BigNumber.from('1284009367540270688'), BigNumber.from('2718145926825191179')];
 
 describe('0_Factory testing', async function () {
   let deployer: PoolDeployer;
@@ -58,7 +57,11 @@ describe('0_Factory testing', async function () {
 
     it('Should have deployed with four right feeToTicksInRange entries', async function () {
       for (let step = 0; step < fees.length; step++) {
-        expect(await factory.feeToTicksInRange(fees[step].toString())).to.equal(ticksInRange[step]);
+        const data = await factory.getPoolType(fees[step].toString());
+        const { 0: ticksInRange_, 1: sqrtRangeMultiplier, 2: sqrtRangeMultiplier100 } = data;
+        expect(ticksInRange_.toString()).to.equal(ticksInRange[step]);
+        expect(sqrtRangeMultiplier.toString()).to.equal(sqrtRangeMultipliers[step]);
+        expect(sqrtRangeMultiplier100.toString()).to.equal(sqrtRangeMultipliers100[step]);
       }
     });
   });
@@ -102,8 +105,12 @@ describe('0_Factory testing', async function () {
     });
 
     it('addPoolType should work while called properly', async function () {
-      await factory.connect(owner).addPoolType('3333', '33333');
-      expect(await factory.feeToTicksInRange('3333')).to.equal(BigNumber.from('33333'));
+      await factory.connect(owner).addPoolType('3333', '300');
+      const data = await factory.getPoolType('3333');
+      const { 0: ticksInRange_, 1: sqrtRangeMultiplier, 2: sqrtRangeMultiplier100 } = data;
+      expect(ticksInRange_).to.equal('300');
+      expect(sqrtRangeMultiplier).to.equal('1015112303331957643');
+      expect(sqrtRangeMultiplier100).to.equal('4481352978667228103');
     });
 
     it('createPool should fail while called by not the owner', async function () {
@@ -134,7 +141,7 @@ describe('0_Factory testing', async function () {
         expect(await pool.token1()).to.equal(tokenA.address > tokenB.address ? tokenA.address : tokenB.address);
         expect(await pool.factory()).to.equal(factory.address);
         expect(await pool.swapRouter()).to.equal(swapRouter.address);
-        expect(await pool.feePercentage()).to.equal(fees[step]);
+        expect(await pool.fee()).to.equal(fees[step]);
         expect(await pool.sqrtRangeMultiplier()).to.equal(sqrtRangeMultipliers[step]);
         expect(await pool.sqrtRangeMultiplier100()).to.equal(sqrtRangeMultipliers100[step]);
         expect(await pool.protocolFeePart()).to.equal(BigNumber.from(2).mul(BigNumber.from(10).pow(5)));

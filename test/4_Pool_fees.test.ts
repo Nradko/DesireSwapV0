@@ -16,7 +16,7 @@ const MAX_UINT = '57896044618658097711785492504343953926634992332820282019728792
 const E6 = BigNumber.from(10).pow(6);
 const E14 = BigNumber.from(10).pow(14);
 const E18 = BigNumber.from(10).pow(18);
-const fees = [BigNumber.from(400), BigNumber.from(500), BigNumber.from(3000), BigNumber.from(10000)];
+const fees = [BigNumber.from(400), BigNumber.from(500), BigNumber.from(3000)];
 const usersTokensAmount = E18.pow(2);
 const protocolFee = BigNumber.from(200000); //1E6
 

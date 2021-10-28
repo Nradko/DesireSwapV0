@@ -13,8 +13,8 @@ import { DesireSwapV0Factory, DesireSwapV0Pool, IDesireSwapV0Factory, PoolDeploy
 
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 const E18 = BigNumber.from(10).pow(18);
-const fees = [BigNumber.from(400), BigNumber.from(500), BigNumber.from(3000), BigNumber.from(10000)];
-const sqrtRangeMultipliers = [BigNumber.from('1000049998750062496'), BigNumber.from('1000500100010000494'), BigNumber.from('1002503002301265502'), BigNumber.from('1010049662092876444')];
+const fees = [BigNumber.from(400), BigNumber.from(500), BigNumber.from(3000)];
+const sqrtRangeMultipliers = [BigNumber.from('1000049998750062496'), BigNumber.from('1002503002301265502'), BigNumber.from('1010049662092876444')];
 
 describe('1_Pool Tests', async function () {
   let deployer: PoolDeployer;
@@ -34,13 +34,11 @@ describe('1_Pool Tests', async function () {
   const activate = [1];
   const initArguments = [
     [-9999, -999, 1, 999, 9999],
-    [-39999, -999, 1, 999, 39999],
     [-5999, -999, 1, 999, 5999],
     [-2299, -999, 1, 999, 2299],
   ];
   const initSqrtMultiplier = [
     ['606576148690794945', '951279362819861346', '1000049998750062496', '1051215908895275393', '1648597628110404459'],
-    ['2064246491', '606849155729564901', '1000500100010000494', '1647855963147515697', '484438037558180983984204397'],
     ['306898066443', '82300743828684458', '1002503002301265502', '12150558469818655752', '3258410882003457245647260'],
     ['103769287', '45879116011238', '1010049662092876444', '21796409498254055183735', '9636757948696574133278733528'],
   ];

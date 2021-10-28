@@ -8,6 +8,15 @@ interface IDesireSwapV0Factory {
   event CollectorChanged(address oldFeeCollector, address newFeeCollector);
   event SwapRouterChanged(address odlSwapRouter, address newSwapRouter);
 
+  struct PoolType{
+    // define size of ranges
+    uint256 ticksInRange;
+    // sqrtRangeMultiplier = TICK_SIZE**ticksInRange
+    uint256 sqrtRangeMultiplier;
+    // sqrtRangeMultiplier100 = sqrtRangeMultiplier**100;
+    uint256 sqrtRangeMultiplier100;
+  }
+
   /// @return the addres of rhe owner of factory
   function owner() external view returns (address);
 
@@ -25,10 +34,12 @@ interface IDesireSwapV0Factory {
   /// @return true if contract can interact with swapRouter
   function allowlisted(address) external view returns (bool);
 
-  /// @notice map ticks in a range corresponding to the fee
-  /// @param () fee of the pool
-  /// @return ticks in a single range
-  function feeToTicksInRange(uint256 fee) external view returns (uint256);
+  /// @notice return data of PoolTypa
+  /// @param fee of the poolType
+  /// @return ticksInRange in a single range that defines ranges size
+  /// @return sqrtRangeMultiplier size of range
+  /// @return sqrtRangeMultiplier100 size of range **100
+  function getPoolType(uint256 fee) external view returns (uint256 ticksInRange, uint256 sqrtRangeMultiplier, uint256 sqrtRangeMultiplier100);
 
   /// @param () 1st ERC20 token in pool
   /// @param () 2nd ERC20 token in pool

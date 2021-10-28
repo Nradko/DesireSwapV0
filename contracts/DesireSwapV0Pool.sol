@@ -1,4 +1,3 @@
-//"SPDX-License-Identifier: UNLICENSED"
 /*******************************************************
  * Copyright (C) 2021-2022 Konrad Wierzbik <desired.desire@protonmail.com>
  *
@@ -39,7 +38,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   uint256 private immutable ticksInRange;
   uint256 public immutable override sqrtRangeMultiplier; // example: 100100000.... is 1.001 (* 10**)
   uint256 public immutable sqrtRangeMultiplier100; // sqrtRangeMultipier**100
-  uint256 public immutable override feePercentage; //  0 fee is 0 // 100% fee is 1* 10**18;
+  uint256 public immutable override fee; //  0 fee is 0 // 100% fee is 1* 10**18;
   uint256 public override protocolFeePart = 200000;
   uint256 private totalReserve0;
   uint256 private totalReserve1;
@@ -65,8 +64,10 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     address swapRouter_,
     address token0_,
     address token1_,
-    uint256 feePercentage_,
+    uint256 fee_,
     uint256 ticksInRange_,
+    uint256 sqrtRangeMultiplier_,
+    uint256 sqrtRangeMultiplier100_,
     string memory name_,
     string memory symbol_
   ) Ticket(name_, symbol_) {
@@ -75,19 +76,9 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     swapRouter = swapRouter_;
     token0 = token0_;
     token1 = token1_;
-    feePercentage = feePercentage_;
+    fee = fee_;
     ticksInRange = ticksInRange_;
-    uint256 sqrtRangeMultiplier_ = E18;
-    while (ticksInRange_ > 0) {
-      sqrtRangeMultiplier_ = (sqrtRangeMultiplier_ * TICK_SIZE) / E18;
-      ticksInRange_--;
-    }
     sqrtRangeMultiplier = sqrtRangeMultiplier_;
-
-    uint256 sqrtRangeMultiplier100_ = E18;
-    for(uint256 step = 0; step < 100; step++){
-      sqrtRangeMultiplier100_ = sqrtRangeMultiplier100_ * sqrtRangeMultiplier_ /E18;
-    }
     sqrtRangeMultiplier100 = sqrtRangeMultiplier100_;
   }
 
@@ -261,7 +252,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(index);  // reserve0, reserve1, sqrtPriceBot, sqrtPriceTop
     require((zeroForOne && amountOut <= h.value01) || (!zeroForOne && amountOut <= h.value00), 'PSIR: INSUF_POSITION_LIQ');
     uint256 amountInHelp = PoolHelper.AmountIn(zeroForOne, h.value00, h.value01, h.value10, h.value11, amountOut); // do not include fees;
-    uint256 collectedFee = (amountInHelp * feePercentage) / E6;
+    uint256 collectedFee = (amountInHelp * fee) / E6;
     amountIn = amountInHelp + collectedFee;
     amountInHelp = amountIn;
     if (protocolFeeIsOn) {
@@ -345,14 +336,14 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     //
     else if (s.amount > 0) {
       remained = uint256(s.amount);
-      uint256 predictedFee = (remained * feePercentage) / E6;
+      uint256 predictedFee = (remained * fee) / E6;
       (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(usingRange);
       uint256 amountOut = PoolHelper.AmountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained - predictedFee);
       usingReserve = s.zeroForOne ? h.value01 : h.value00;
       while (amountOut > usingReserve) {
         remained -= _swapInRange(usingRange, s.zeroForOne, s.zeroForOne ? h.value01 : h.value00);
         amountSend += s.zeroForOne ? h.value01 : h.value00;
-        predictedFee = (remained * feePercentage) / E6;
+        predictedFee = (remained * fee) / E6;
         usingRange = inUseRange;
         (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(usingRange);
         usingReserve = s.zeroForOne ? h.value01 : h.value00;
@@ -619,8 +610,8 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     uint256 amount1,
     bytes calldata data
   ) external override {
-    uint256 fee0 = (amount0 * feePercentage) / E6;
-    uint256 fee1 = (amount1 * feePercentage) / E6;
+    uint256 fee0 = (amount0 * fee) / E6;
+    uint256 fee1 = (amount1 * fee) / E6;
     uint256 balance0Before = balance0();
     uint256 balance1Before = balance1();
 

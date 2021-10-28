@@ -16,7 +16,7 @@ function getRandomInt(max: number) {
 }
 
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
-const MAX_UINT = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
+const MAX_INT = '57896044618658097711785492504343953926634992332820282019728792003956564819967';
 const E14 = BigNumber.from(10).pow(14);
 const E18 = BigNumber.from(10).pow(18);
 const fees = [BigNumber.from(400)]; //, BigNumber.from(500), BigNumber.from(3000), BigNumber.from(10000)];
@@ -63,8 +63,8 @@ for (let init = 0; init < toInitialize.length; init++) {
           await tokenB.connect(owner).transfer(users[i].address, usersTokensAmount);
         }
         for (let i = 0; i < users.length; i++) {
-          await tokenA.connect(users[i]).approve(liqManager.address, MAX_UINT);
-          await tokenB.connect(users[i]).approve(liqManager.address, MAX_UINT);
+          await tokenA.connect(users[i]).approve(liqManager.address, MAX_INT);
+          await tokenB.connect(users[i]).approve(liqManager.address, MAX_INT);
         }
         await factory.connect(owner).createPool(tokenA.address, tokenB.address, fees[poolType], 'DSV0P: token A/tokenB pair', 'DSP tA-tB ()');
         poolAddress = await factory.poolAddress(tokenA.address, tokenB.address, fees[poolType]);
@@ -81,10 +81,10 @@ for (let init = 0; init < toInitialize.length; init++) {
           lowestRangeIndex: toInitialize[init],
           highestRangeIndex: toInitialize[init],
           liqToAdd: E14,
-          amount0Max: MAX_UINT,
-          amount1Max: MAX_UINT,
+          amount0Max: MAX_INT,
+          amount1Max: MAX_INT,
           recipient: owner.address,
-          deadline: MAX_UINT,
+          deadline: MAX_INT,
         });
       });
       for (let sup = 0; sup < supplyfromInit.length; sup++) {
@@ -104,8 +104,8 @@ for (let init = 0; init < toInitialize.length; init++) {
                 lowestRangeIndex: lowestIndex,
                 highestRangeIndex: highestIndex,
                 liqToAdd: liqToAdd,
-                amount0Max: MAX_UINT,
-                amount1Max: MAX_UINT,
+                amount0Max: MAX_INT,
+                amount1Max: MAX_INT,
                 recipient: user1.address,
                 deadline: '1',
               })
@@ -121,10 +121,10 @@ for (let init = 0; init < toInitialize.length; init++) {
                 lowestRangeIndex: lowestIndex,
                 highestRangeIndex: highestIndex,
                 liqToAdd: liqToAdd,
-                amount0Max: MAX_UINT,
-                amount1Max: MAX_UINT,
+                amount0Max: MAX_INT,
+                amount1Max: MAX_INT,
                 recipient: owner.address,
-                deadline: MAX_UINT,
+                deadline: MAX_INT,
               });
               const amounts: BigNumber[] = [callstaticData[2], callstaticData[3]];
               //Act && Assert
@@ -139,7 +139,7 @@ for (let init = 0; init < toInitialize.length; init++) {
                   amount0Max: amounts[0].sub(1).toString(),
                   amount1Max: amounts[1].toString(),
                   recipient: user1.address,
-                  deadline: MAX_UINT,
+                  deadline: MAX_INT,
                 })
               ).to.be.reverted;
             });
@@ -154,10 +154,10 @@ for (let init = 0; init < toInitialize.length; init++) {
                 lowestRangeIndex: lowestIndex,
                 highestRangeIndex: highestIndex,
                 liqToAdd: liqToAdd,
-                amount0Max: MAX_UINT,
-                amount1Max: MAX_UINT,
+                amount0Max: MAX_INT,
+                amount1Max: MAX_INT,
                 recipient: owner.address,
-                deadline: MAX_UINT,
+                deadline: MAX_INT,
               });
               const amounts: BigNumber[] = [callstaticData[2], callstaticData[3]];
               //Act && Assert
@@ -172,7 +172,7 @@ for (let init = 0; init < toInitialize.length; init++) {
                   amount0Max: amounts[0].toString(),
                   amount1Max: amounts[1].sub(1).toString(),
                   recipient: user1.address,
-                  deadline: MAX_UINT,
+                  deadline: MAX_INT,
                 })
               ).to.be.reverted;
             });
@@ -190,10 +190,10 @@ for (let init = 0; init < toInitialize.length; init++) {
                 lowestRangeIndex: lowestIndex,
                 highestRangeIndex: highestIndex,
                 liqToAdd: liqToAdd,
-                amount0Max: MAX_UINT,
-                amount1Max: MAX_UINT,
+                amount0Max: MAX_INT,
+                amount1Max: MAX_INT,
                 recipient: owner.address,
-                deadline: MAX_UINT,
+                deadline: MAX_INT,
               });
               const amounts: BigNumber[] = [callstaticData[2], callstaticData[3]];
               const ticketId: BigNumber = callstaticData[1];
@@ -208,7 +208,7 @@ for (let init = 0; init < toInitialize.length; init++) {
                 amount0Max: amounts[0].toString(),
                 amount1Max: amounts[1].toString(),
                 recipient: user1.address,
-                deadline: MAX_UINT,
+                deadline: MAX_INT,
               });
 
               const totalReservesAfter = await pool.getTotalReserves();
@@ -242,10 +242,10 @@ for (let init = 0; init < toInitialize.length; init++) {
                 lowestRangeIndex: lowestIndex,
                 highestRangeIndex: highestIndex,
                 liqToAdd: liqToAdd,
-                amount0Max: MAX_UINT,
-                amount1Max: MAX_UINT,
+                amount0Max: MAX_INT,
+                amount1Max: MAX_INT,
                 recipient: owner.address,
-                deadline: MAX_UINT,
+                deadline: MAX_INT,
               });
               const amounts: BigNumber[] = [callstaticData[2], callstaticData[3]];
               const ticketId: BigNumber = callstaticData[1];
@@ -260,7 +260,7 @@ for (let init = 0; init < toInitialize.length; init++) {
                 amount0Max: amounts[0].toString(),
                 amount1Max: amounts[1].toString(),
                 recipient: user1.address,
-                deadline: MAX_UINT,
+                deadline: MAX_INT,
               });
 
               await pool.connect(user1).burn(user1.address, ticketId.toString());
@@ -290,10 +290,10 @@ for (let init = 0; init < toInitialize.length; init++) {
                     lowestRangeIndex: lowestIndex,
                     highestRangeIndex: highestIndex,
                     liqToAdd: liqToAdd,
-                    amount0Max: MAX_UINT,
-                    amount1Max: MAX_UINT,
+                    amount0Max: MAX_INT,
+                    amount1Max: MAX_INT,
                     recipient: users[use].address,
-                    deadline: MAX_UINT,
+                    deadline: MAX_INT,
                   });
                   amounts.push([callstaticData[2], callstaticData[3]]);
                   ticketId.push(callstaticData[1]);
@@ -307,7 +307,7 @@ for (let init = 0; init < toInitialize.length; init++) {
                     amount0Max: callstaticData[2].toString(),
                     amount1Max: callstaticData[3].toString(),
                     recipient: users[use].address,
-                    deadline: MAX_UINT,
+                    deadline: MAX_INT,
                   });
                 }
               }
