@@ -2,29 +2,27 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { ethers } from 'hardhat';
-import { Contract } from 'hardhat/internal/hardhat-network/stack-traces/model';
 import { contractNames } from '../scripts/consts';
 import { deployContract } from '../scripts/utils';
-import { DesireSwapV0Factory, DesireSwapV0Pool, IDesireSwapV0Factory, IDesireSwapV0Pool, LiquidityManager, PoolDeployer, SwapRouter, TestERC20 } from '../typechain';
-
-function getRandomInt(max: number) {
-  return Math.floor(Math.random() * max);
-}
+import { DesireSwapV0Factory, DesireSwapV0Pool, IDesireSwapV0Factory, LiquidityManager, PoolDeployer, SwapRouter, TestERC20 } from '../typechain';
 
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
 const MAX_UINT = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
+// eslint-disable-next-line @typescript-eslint/no-magic-numbers
 const e14 = BigNumber.from(10).pow(14);
+// eslint-disable-next-line @typescript-eslint/no-magic-numbers
 const e18 = BigNumber.from(10).pow(18);
+// eslint-disable-next-line @typescript-eslint/no-magic-numbers
 const fees = [BigNumber.from(4).mul(e14)]; //, BigNumber.from(5).mul(e14), BigNumber.from(30).mul(e14), BigNumber.from(100).mul(e14)];
 const usersTokensAmount = e18.pow(2);
 
+// eslint-disable-next-line @typescript-eslint/no-magic-numbers
 const toInitialize = [100];
+// eslint-disable-next-line @typescript-eslint/no-magic-numbers
 const supplyFromInit = [10];
 for (let init = 0; init < toInitialize.length; init++) {
   for (let poolType = 0; poolType < fees.length; poolType++) {
     for (let sup = 0; sup < supplyFromInit.length; sup++) {
-      const lowestIndex = toInitialize[init] - supplyFromInit[sup];
-      const highestIndex = toInitialize[init] + supplyFromInit[sup];
       describe('Pool Tests', async function () {
         let deployer: PoolDeployer;
         let factory: IDesireSwapV0Factory;
@@ -41,9 +39,7 @@ for (let init = 0; init < toInitialize.length; init++) {
         let poolAddress: string;
         let pool: DesireSwapV0Pool;
         let Pool: any;
-        let got: any;
         let users: SignerWithAddress[];
-        let data = ['0', '0'];
 
         beforeEach(async () => {
           [owner, user1, user2, user3] = await ethers.getSigners();
@@ -142,6 +138,7 @@ for (let init = 0; init < toInitialize.length; init++) {
           });
 
           it('accumulation in token1', async function () {
+            //Arrange
             const feeEarning = e18.add(fees[poolType].mul(8).div(5));
             await liqManager.connect(user1).supply({
               token0: token0.address,
@@ -169,6 +166,8 @@ for (let init = 0; init < toInitialize.length; init++) {
             });
             const totalSupplied = await pool.getTotalReserves();
             let totalResrves = totalSupplied;
+
+            //Act
             await swapRouter.connect(user2).exactOutputSingle({
               tokenIn: token0.address,
               tokenOut: token1.address,
@@ -192,6 +191,8 @@ for (let init = 0; init < toInitialize.length; init++) {
               sqrtPriceLimitX96: '0',
             });
             totalResrves = await pool.getTotalReserves();
+
+            //Assert
             expect(totalResrves[0]).to.equal(totalSupplied[0]);
             expect(totalResrves[1].gte(totalSupplied[1].mul(feeEarning).div(e18))).to.be.true;
           });

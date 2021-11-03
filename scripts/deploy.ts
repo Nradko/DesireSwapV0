@@ -6,12 +6,14 @@ const ethernal = require('hardhat-ethernal');
 import { ContractInput } from 'hardhat-ethernal/dist/src/types';
 import { task } from 'hardhat/config';
 import 'hardhat/types/runtime';
-import { DesireSwapV0Factory, DesireSwapV0Pool, LiquidityManager, LiquidityManagerHelper, SwapRouter, UniswapInterfaceMulticall } from '../typechain';
+import { DesireSwapV0Factory, DesireSwapV0Pool, LiquidityManager, LiquidityManagerHelper, PositionViewer, SwapRouter, UniswapInterfaceMulticall } from '../typechain';
 import { PoolDeployer } from '../typechain/PoolDeployer';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { contractNames, FEE } from './consts';
 import { generateHardhatConsts } from './hardhatContsGenerator';
 import { deployContract } from './utils';
+import { BigNumber } from 'ethers';
+import { sendEtherToAccount } from './sendEtherToAccount';
 
 const getContractMetadata = (contractName: string, contractAddress: string): ContractInput => ({
   name: contractName,
@@ -26,6 +28,8 @@ const synchronizeContractsWithEthernal = async (contractMetadatas: Record<string
     }
   });
 };
+
+const debugOwnerAddress = '0x3e19756F2A1e0aC7d7327B2bCAc0dcd5966be2bE';
 
 async function main() {
   try {
@@ -43,7 +47,10 @@ async function main() {
     const router = await deployContract<SwapRouter>(contractNames.swapRouter, factory.address, owner.address);
     const liqManager = await deployContract<LiquidityManager>(contractNames.liquidityManager, factory.address, owner.address);
     const tHelper = await deployContract<LiquidityManagerHelper>(contractNames.liquidityManagerHelper, factory.address);
-    const { pool, tokenA, tokenB } = await deployTestTokensAndPool(owner, factory);
+    const positionViewer = await deployContract<PositionViewer>(contractNames.positionViewer);
+
+    const { pool, tokenA, tokenB } = await deployTestTokensAndPool(owner, factory, liqManager, router, debugOwnerAddress);
+    await sendEtherToAccount(debugOwnerAddress, 2);
 
     const deployedCoreContractMetadatas = {
       [contractNames.multicall]: getContractMetadata(contractNames.multicall, multicall.address),
@@ -52,6 +59,7 @@ async function main() {
       [contractNames.swapRouter]: getContractMetadata(contractNames.swapRouter, router.address),
       [contractNames.liquidityManager]: getContractMetadata(contractNames.liquidityManager, liqManager.address),
       [contractNames.liquidityManagerHelper]: getContractMetadata(contractNames.liquidityManagerHelper, tHelper.address),
+      [contractNames.positionViewer]: getContractMetadata(contractNames.positionViewer, positionViewer.address),
     };
 
     const deployedContractMetadatas = {
@@ -60,7 +68,6 @@ async function main() {
       [contractNames.tokenB]: getContractMetadata(contractNames.tokenB, tokenB.address),
       [contractNames.pool]: getContractMetadata(contractNames.pool, pool.address),
     };
-
     generateHardhatConsts(deployedContractMetadatas);
     await synchronizeContractsWithEthernal(deployedContractMetadatas);
   } catch (err) {
@@ -68,7 +75,10 @@ async function main() {
   }
 }
 
-const deployTestTokensAndPool = async (owner: SignerWithAddress, factory: DesireSwapV0Factory) => {
+const deployTestTokensAndPool = async (owner: SignerWithAddress, factory: DesireSwapV0Factory, liqManager: LiquidityManager, swapRouter: SwapRouter, supplyingUser: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+  const tokenSupply = BigNumber.from(10).pow(32).toString();
+
   const Token = await hardhat.ethers.getContractFactory('TestERC20');
   const tokenA = await Token.deploy(contractNames.tokenA, 'TA', owner.address);
   const tokenB = await Token.deploy(contractNames.tokenB, 'TB', owner.address);
@@ -80,13 +90,40 @@ const deployTestTokensAndPool = async (owner: SignerWithAddress, factory: Desire
   console.log('Pool address: %s', poolAddress);
   const PoolFactory = await hardhat.ethers.getContractFactory(contractNames.pool);
   const pool = PoolFactory.attach(poolAddress) as DesireSwapV0Pool;
-  await pool.initialize(0);
+  const startingInUseRange = 0;
+  await pool.initialize(startingInUseRange);
   console.log('activating ranges');
   const upperRangeToActivate = 100;
   const lowerRangeToActivate = 100;
   await pool.connect(owner).activate(upperRangeToActivate);
   await pool.connect(owner).activate(-lowerRangeToActivate);
   console.log('activated');
+
+  await tokenA.connect(owner).approve(liqManager.address, tokenSupply);
+  await tokenB.connect(owner).approve(liqManager.address, tokenSupply);
+  // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+  await tokenA.connect(owner).transfer(supplyingUser, BigNumber.from(10).pow(30));
+  // eslint-disable-next-line @typescript-eslint/no-magic-numbers
+  await tokenB.connect(owner).transfer(supplyingUser, BigNumber.from(10).pow(30));
+
+  await tokenA.connect(owner).approve(swapRouter.address, tokenSupply);
+  await tokenB.connect(owner).approve(swapRouter.address, tokenSupply);
+  console.log('approved');
+
+  await liqManager.connect(owner).supply({
+    token0: tokenA.address,
+    token1: tokenB.address,
+    fee: FEE.toString(),
+    lowestRangeIndex: startingInUseRange,
+    highestRangeIndex: startingInUseRange,
+    liqToAdd: '10000000',
+    amount0Max: '100000000000000000000000',
+    amount1Max: '10000000000000000000000000',
+    recipient: owner.address,
+    deadline: '1000000000000000000000000',
+  });
+  const poolInUseInfo = await pool.inUseInfo();
+  console.log(poolInUseInfo);
   return { tokenA, tokenB, pool };
 };
 
