@@ -15,17 +15,15 @@ pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import './base/Ticket.sol';
-import './libraries/PoolHelper.sol';
-import './libraries/TransferHelper.sol';
-import './interfaces/IDesireSwapV0Factory.sol';
-import './interfaces/IDesireSwapV0Pool.sol';
 
 import './interfaces/callback/IDesireSwapV0MintCallback.sol';
 import './interfaces/callback/IDesireSwapV0SwapCallback.sol';
 import './interfaces/callback/IDesireSwapV0FlashCallback.sol';
+import './interfaces/IDesireSwapV0Factory.sol';
+import './interfaces/IDesireSwapV0Pool.sol';
 
-import 'hardhat/console.sol';
-
+import './libraries/PoolHelper.sol';
+import './libraries/TransferHelper.sol';
 
 contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   bool public override initialized;
@@ -42,7 +40,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   uint256 private immutable ticksInRange;
   uint256 public immutable override sqrtRangeMultiplier; // example: 100100000.... is 1.001 (* 10**)
   uint256 public immutable sqrtRangeMultiplier100; // sqrtRangeMultipier**100
-  uint256 public immutable override fee; //  0 fee is 0 // 100% fee is 1* 10**18;
+  uint256 public immutable override fee; //  0 fee is 0 // 100% fee is 1* 10**6;
   uint256 public override protocolFeePart = 200000;
   uint256 private totalReserve0;
   uint256 private totalReserve1;

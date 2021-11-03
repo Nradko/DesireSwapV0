@@ -4,8 +4,6 @@ pragma solidity ^0.8.0;
 import './interfaces/IPoolDeployer.sol';
 import './interfaces/IDesireSwapV0Factory.sol';
 
-import 'hardhat/console.sol';
-
 contract DesireSwapV0Factory is IDesireSwapV0Factory {
   // smallest sqrtRangeMultiplier
   uint256 private constant TICK_SIZE = 1000049998750062496;
