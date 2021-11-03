@@ -1,11 +1,9 @@
 const { expect, assert } = require("chai");
 const hre = require("hardhat");
 require("../scripts/LiquidityHelper");
-const {Interface} = require('@ethersproject/abi');
-const { abi } = require('../artifacts/contracts/LiquidityManager.sol/LiquidityManager.json');
-const {BigNumber} = require('@ethersproject/bignumber');
 
-const PoolABI = require('./abis/PoolABI.js').abi
+
+
 
 async function consoleBalances(owner, token0, token1){
 	const balanceA = await token0.balanceOf(owner);

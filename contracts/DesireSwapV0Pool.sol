@@ -177,7 +177,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   }
 
   /// note modifyRangeReserves and changes the inUsePosition if reserves are used
-  function _modifyRangeReserves(
+  function _updateRangeReserves(
     int24 index,
     uint256 toAdd0,
     uint256 toAdd1,
@@ -185,17 +185,19 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     bool add1,
     bool isSwap
   ) private {
-    ranges[index].reserve0 = add0 ? ranges[index].reserve0 + toAdd0 : ranges[index].reserve0 - toAdd0;
-    ranges[index].reserve1 = add1 ? ranges[index].reserve1 + toAdd1 : ranges[index].reserve1 - toAdd1;
+    uint256 updatedReserve0 = add0 ? ranges[index].reserve0 + toAdd0 : ranges[index].reserve0 - toAdd0;
+    uint256 updatedReserve1 = add1 ? ranges[index].reserve1 + toAdd1 : ranges[index].reserve1 - toAdd1;
+    ranges[index].reserve0 = updatedReserve0;
+    ranges[index].reserve1 = updatedReserve1;
     totalReserve0 = add0 ? totalReserve0 + toAdd0 : totalReserve0 - toAdd0;
     totalReserve1 = add1 ? totalReserve1 + toAdd1 : totalReserve1 - toAdd1;
 
     if (isSwap) {
-      if (ranges[index].reserve0 == 0 && ranges[inUseRange+1].activated && index == inUseRange) {
+      if (updatedReserve0 == 0 && ranges[inUseRange+1].activated && index == inUseRange) {
         inUseRange++;
         emit InUseRangeChanged(index, index + 1);
       }
-      if (ranges[index].reserve1 == 0 && ranges[inUseRange-1].activated && index == inUseRange) {
+      if (updatedReserve1 == 0 && ranges[inUseRange-1].activated && index == inUseRange) {
         inUseRange--;
         emit InUseRangeChanged(index, index - 1);
       }
@@ -266,7 +268,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       ); //assure that after swap there is more or equal liquidity. If PoolHelper.AmountIn works correctly it can be removed.
       //!!
       require(amountOut <= h.value01, 'POOLSIR: ETfT');
-      _modifyRangeReserves(index, amountInHelp, amountOut, true, false, true);
+      _updateRangeReserves(index, amountInHelp, amountOut, true, false, true);
     }
     // token1 for token0 // token1 in; token0 out;
     else {
@@ -277,7 +279,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       ); //assure that after swap there is more or equal liquidity. If PoolHelper.AmountIn works correctly it can be removed.
       //!!
       require(amountOut <= h.value00, 'POOLSIR: ETfT');
-      _modifyRangeReserves(index, amountOut, amountInHelp, false, true, true);
+      _updateRangeReserves(index, amountOut, amountInHelp, false, true, true);
     }
     delete h;
   }
@@ -410,7 +412,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     _ticketSupplyData[ticketId][index] = supplyData;
     ranges[index].supplyCoefficient += supplyData;
     //!!
-    _modifyRangeReserves(index, amount0ToAdd, 0, true, true, false);
+    _updateRangeReserves(index, amount0ToAdd, 0, true, true, false);
   }
 
   /// @notice this method  is writing data down on ticket while performing mint
@@ -437,7 +439,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     _ticketSupplyData[ticketId][index] = supplyData;
     ranges[index].supplyCoefficient += supplyData;
     //!!
-    _modifyRangeReserves(index, 0, amount1ToAdd, true, true, false);
+    _updateRangeReserves(index, 0, amount1ToAdd, true, true, false);
   }
 
   /// inherit doc from IDesreSwapV0Pool
@@ -484,12 +486,11 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       for (int24 i = usingRange - 1; i >= lowestRangeIndex; i--) {
         amount1 += _printOnTicket1(i, ticketId, liqToAdd);
       }
-      if (!ranges[usingRange].activated) activate(usingRange);
       (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(usingRange);  // reserve0, reserve1, sqrtPriceBot, sqrtPriceTop
       uint256 liqCoefBefore = PoolHelper.liqCoefficient(h.value00, h.value01, h.value10, h.value11);
       uint256 amount0ToAdd;
       uint256 amount1ToAdd;
-      if ( (h.value00 == 0 && h.value01 == 0 ) || liqCoefBefore ==0) {
+      if ( (h.value00 == 0 && h.value01 == 0 ) || liqCoefBefore == 0) {
         amount0ToAdd = (liqToAdd * E18 * (h.value11 - h.value10)) / (h.value10 * h.value11) / 2;
         amount1ToAdd = (liqToAdd * (h.value11 - h.value10)) / E18 / 2;
       } else {
@@ -508,7 +509,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       //!!
       ranges[usingRange].supplyCoefficient += _ticketSupplyData[ticketId][usingRange];
       //!!
-      _modifyRangeReserves(usingRange, amount0ToAdd, amount1ToAdd, true, true, false);
+      _updateRangeReserves(usingRange, amount0ToAdd, amount1ToAdd, true, true, false);
     }
     IDesireSwapV0MintCallback(msg.sender).desireSwapV0MintCallback(amount0, amount1, data);
     ///???
@@ -539,11 +540,11 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     if (sendZero) {
       amountToTransfer = (supply * ranges[index].reserve0) / ranges[index].supplyCoefficient;
       //!!
-      _modifyRangeReserves(index, amountToTransfer, 0, false, false, false);
+      _updateRangeReserves(index, amountToTransfer, 0, false, false, false);
     } else {
       amountToTransfer = (supply * ranges[index].reserve1) / ranges[index].supplyCoefficient;
       //!!
-      _modifyRangeReserves(index, 0, amountToTransfer, false, false, false);
+      _updateRangeReserves(index, 0, amountToTransfer, false, false, false);
     }
     //!!
     ranges[index].supplyCoefficient -= supply;
@@ -582,7 +583,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       h.value11 = (supply * ranges[usingRange].reserve1) / ranges[usingRange].supplyCoefficient;
       h.value00 += h.value10;
       h.value01 += h.value11;
-      _modifyRangeReserves(usingRange, h.value10, h.value11, false, false, false);
+      _updateRangeReserves(usingRange, h.value10, h.value11, false, false, false);
       ranges[usingRange].supplyCoefficient -= supply;
     }
     //!!!
