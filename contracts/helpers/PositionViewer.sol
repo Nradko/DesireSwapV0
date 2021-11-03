@@ -1,11 +1,15 @@
-/*******************************************************
- * Copyright (C) 2021-2022 Konrad Wierzbik <desired.desire@protonmail.com>
+/************************************************************************************************
+ * Copyright (C) 2021-2022  <desired.desire@protonmail.com>
  *
- * This file is part of DesireSwapProject and was developed by Konrad Konrad Wierzbik.
+ * "Author" should be understood at person who is using email: <desired.desire@protonmail.com>
  *
- * DesireSwapProject files that are said to be developed by Konrad Wierzbik can not be copied 
- * and/or distributed without the express permission of Konrad Wierzbik.
- *******************************************************/
+ * This file is part of DesireSwap protocol and was developed by Author .
+ *
+ * DesireSwap protocol files that are said to be developed by Author can not be copied
+ * and/or distributed without the express permission of Author.
+ *
+ * Author gives permission to everyone to copy and use these files only in order to test them.
+ ************************************************************************************************/
 pragma solidity ^0.8.0;
 
 import '../interfaces/IDesireSwapV0Pool.sol';
