@@ -34,7 +34,7 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
   }
 
   modifier onlyByOwner() {
-    require(msg.sender == owner, 'DesireSwapV0Factory: SENDER_IS_NOT_THE_OWNER');
+    require(msg.sender == owner, 'F0');
     _;
   }
 
@@ -67,10 +67,10 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
     string memory name_,
     string memory symbol_
   ) external override onlyByOwner {
-    require(tokenA_ != tokenB_, 'ARE_EQUAL');
-    require(tokenA_ != address(0) && tokenB_ != address(0), '0ADDRESS');
-    require(poolAddress[tokenA_][tokenB_][fee_] == address(0), 'ALREADY_EXISTS');
-    require(feeToPoolType[fee_].ticksInRange > 0, 'POOLTYPE_UNDEFINED');
+    require(tokenA_ != tokenB_, 'FcP0');
+    require(tokenA_ != address(0) && tokenB_ != address(0), 'FcP1');
+    require(poolAddress[tokenA_][tokenB_][fee_] == address(0), 'FcP2');
+    require(feeToPoolType[fee_].ticksInRange > 0, 'FcP3');
     address pool = IPoolDeployer(deployerAddress).deployPool(
       address(this),
       swapRouter,
