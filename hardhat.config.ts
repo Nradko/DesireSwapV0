@@ -39,6 +39,10 @@ const config: HardhatUserConfig = {
       accounts: [PRIVATE_KEY],
       gas: 10000000,
     },
+    localhost: {
+      url: 'http://127.0.0.1:8545',
+      gas: 20000000,
+    },
   },
   contractSizer: {
     alphaSort: true,
