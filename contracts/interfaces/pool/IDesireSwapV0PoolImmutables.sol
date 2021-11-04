@@ -16,5 +16,5 @@ interface IDesireSwapV0PoolImmutables {
   function sqrtRangeMultiplier() external view returns (uint256);
 
 /// @return feePercentage of the pool. 100% = 10**18;
-  function feePercentage() external view returns (uint256);
+  function fee() external view returns (uint256);
 }

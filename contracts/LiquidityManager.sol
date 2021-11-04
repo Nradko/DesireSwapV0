@@ -4,15 +4,13 @@ pragma abicoder v2;
 
 import './interfaces/IDesireSwapV0Factory.sol';
 import './interfaces/IDesireSwapV0Pool.sol';
+import './interfaces/ILiquidityManager.sol';
 
 import './base/PeripheryPayments.sol';
 import './base/PeripheryImmutableState.sol';
 import './base/PeripheryValidation.sol';
 
-import './interfaces/ILiquidityManager.sol';
-
 import './libraries/CallbackValidation.sol';
-import 'hardhat/console.sol';
 
 contract LiquidityManager is ILiquidityManager, PeripheryImmutableState, PeripheryPayments, PeripheryValidation {
   constructor(address _factory, address _WETH9) PeripheryImmutableState(_factory, _WETH9) {}

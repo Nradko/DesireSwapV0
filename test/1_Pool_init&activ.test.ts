@@ -1,20 +1,22 @@
+// TO DO
+// the tests must be refactored
+// there is a strange behaviour:
+// the test cases are given by const arrays: fees, toInitialize, supplyFromInit
+// it happens that the same test case may pass or be failed depending on the set of all tests <--- bug to be found
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { expect } from 'chai';
-import { BigNumber } from 'ethers';
 import { ethers } from 'hardhat';
-import { Contract } from 'hardhat/internal/hardhat-network/stack-traces/model';
+import { BigNumber } from 'ethers';
 import { contractNames } from '../scripts/consts';
 import { deployContract } from '../scripts/utils';
-import { DesireSwapV0Factory, IDesireSwapV0Factory, IDesireSwapV0Pool, PoolDeployer, SwapRouter, TestERC20 } from '../typechain';
+import { DesireSwapV0Factory, DesireSwapV0Pool, IDesireSwapV0Factory, PoolDeployer, SwapRouter, TestERC20 } from '../typechain';
 
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
-const e18 = BigNumber.from(10).pow(18);
-const e14 = BigNumber.from(10).pow(14);
-const fees = [BigNumber.from(4).mul(e14), BigNumber.from(5).mul(e14), BigNumber.from(30).mul(e14), BigNumber.from(100).mul(e14)];
-const ticksInRange = [1, 10, 50, 200];
-const sqrtRangeMultipliers = [BigNumber.from('1000049998750062496'), BigNumber.from('1000500100010000494'), BigNumber.from('1002503002301265502'), BigNumber.from('1010049662092876444')];
+const E18 = BigNumber.from(10).pow(18);
+const fees = [BigNumber.from(400), BigNumber.from(500), BigNumber.from(3000)];
+const sqrtRangeMultipliers = [BigNumber.from('1000049998750062496'), BigNumber.from('1002503002301265502'), BigNumber.from('1010049662092876444')];
 
-describe('Pool Tests', async function () {
+describe('1_Pool Tests', async function () {
   let deployer: PoolDeployer;
   let factory: IDesireSwapV0Factory;
   let swapRouter: SwapRouter;
@@ -25,21 +27,25 @@ describe('Pool Tests', async function () {
   let user2: SignerWithAddress;
   let user3: SignerWithAddress;
   let poolAddress: string;
-  let pool: any;
+  let pool: DesireSwapV0Pool;
   let Pool: any;
   let got: any;
 
-  const activate = [1, 100, 200];
-  const initArguments = [-1000, -100, 0, 100, 1000];
+  const activate = [1];
+  const initArguments = [
+    [-9999, -999, 1, 999, 9999],
+    [-5999, -999, 1, 999, 5999],
+    [-2299, -999, 1, 999, 2299],
+  ];
   const initSqrtMultiplier = [
-    ['951231802418720714', '995012727929250863', '1000000000000000000', '1005012269623051144', '1051268468376765990'],
-    ['606545822157838008', '951231802418721635', '1000000000000000000', '1051268468376765912', '1648680055931165216'],
-    ['82095259205968929', '778810517493079476', '1000000000000000000', '1284009367540270688', '12180971345630275339'],
-    ['45422633889282', '367897834377128226', '1000000000000000000', '2718145926825191179', '22015456048549476138200'],
+    ['606576148690794945', '951279362819861346', '1000049998750062496', '1051215908895275393', '1648597628110404459'],
+    ['306898066443', '82300743828684458', '1002503002301265502', '12150558469818655752', '3258410882003457245647260'],
+    ['103769287', '45879116011238', '1010049662092876444', '21796409498254055183735', '9636757948696574133278733528'],
   ];
 
   for (let poolType = 0; poolType < fees.length; poolType++) {
     describe('Testing PoolType[' + poolType + ']', async function () {
+      this.timeout(0);
       describe('Testing Initialization', async function () {
         beforeEach(async () => {
           [owner, user1, user2, user3] = await ethers.getSigners();
@@ -59,21 +65,22 @@ describe('Pool Tests', async function () {
           await expect(pool.connect(user1).initialize('0')).to.be.reverted;
         });
 
-        for (let init = 0; init < initArguments.length; init++) {
+        for (let init = 0; init < initArguments[1].length; init++) {
           it('should initialize correct range with correct sqrtPriceBottom for init = ' + init, async function () {
-            await pool.connect(owner).initialize(initArguments[init]);
-            got = await pool.getFullRangeInfo(initArguments[init]);
+            //Arrange
+            //Act
+            await pool.connect(owner).initialize(initArguments[poolType][init]);
+            got = await pool.getFullRangeInfo(initArguments[poolType][init]);
             let { 0: reserve0, 1: reserve1, 2: sqrt0, 3: sqrt1, 4: supCoef, 5: active } = got;
+            //Assert
             expect(await pool.initialized()).to.equal(true);
-            console.log((await pool.sqrtRangeMultiplier()).toString());
-            console.log(initSqrtMultiplier[poolType][init]);
-            expect(await pool.lowestActivatedRange()).to.equal(initArguments[init]);
-            expect(await pool.highestActivatedRange()).to.equal(initArguments[init]);
+            expect(await pool.lowestActivatedRange()).to.equal(initArguments[poolType][init]);
+            expect(await pool.highestActivatedRange()).to.equal(initArguments[poolType][init]);
             expect((await pool.sqrtRangeMultiplier()).toString()).to.equal(sqrtRangeMultipliers[poolType]);
             expect(reserve0.toString()).to.equal('0');
             expect(reserve1.toString()).to.equal('0');
             expect(sqrt0.toString()).to.equal(initSqrtMultiplier[poolType][init]);
-            expect(sqrt1.toString()).to.equal(sqrt0.mul(BigNumber.from(sqrtRangeMultipliers[poolType])).div(e18));
+            expect(sqrt1.toString()).to.equal(sqrt0.mul(BigNumber.from(sqrtRangeMultipliers[poolType])).div(E18));
             expect(supCoef.toString()).to.equal('0');
             expect(active).to.equal(true);
           });
@@ -95,21 +102,26 @@ describe('Pool Tests', async function () {
           pool = Pool.attach(poolAddress);
         });
 
-        for (let init = 0; init < initArguments.length; init++) {
+        for (let init = 0; init < initArguments[1].length; init++) {
           it('should fail for already activated', async function () {
-            await pool.connect(owner).initialize(initArguments[init]);
-            await expect(pool.activate(initArguments[init])).to.be.reverted;
+            //Act
+            await pool.connect(owner).initialize(initArguments[poolType][init]);
+            //Assert
+            await expect(pool.activate(initArguments[poolType][init])).to.be.reverted;
           });
           for (let act = 0; act < activate.length; act++)
             it('activision should work correctly', async function () {
-              await pool.connect(owner).initialize(initArguments[init]);
-              await pool.activate(initArguments[init] + activate[act]);
-              expect(await pool.highestActivatedRange()).to.equal(initArguments[init] + activate[act]);
-              expect(await pool.lowestActivatedRange()).to.equal(initArguments[init]);
+              //Arrange
+              await pool.connect(owner).initialize(initArguments[poolType][init]);
+              //Act
+              await pool.activate(initArguments[poolType][init] + activate[act]);
+              //Assert
+              expect(await pool.highestActivatedRange()).to.equal(initArguments[poolType][init] + activate[act]);
+              expect(await pool.lowestActivatedRange()).to.equal(initArguments[poolType][init]);
 
-              await pool.activate(initArguments[init] - activate[act]);
-              expect(await pool.highestActivatedRange()).to.equal(initArguments[init] + activate[act]);
-              expect(await pool.lowestActivatedRange()).to.equal(initArguments[init] - activate[act]);
+              await pool.activate(initArguments[poolType][init] - activate[act]);
+              expect(await pool.highestActivatedRange()).to.equal(initArguments[poolType][init] + activate[act]);
+              expect(await pool.lowestActivatedRange()).to.equal(initArguments[poolType][init] - activate[act]);
             });
         }
       });

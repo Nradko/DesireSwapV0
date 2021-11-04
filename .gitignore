@@ -1,4 +1,8 @@
-cache
 artifacts
+cache
 node_modules
+solidity-flattener
+tested
 typechain
+hardhat.config.js
+mynewfile1.txt

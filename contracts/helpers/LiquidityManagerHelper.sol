@@ -1,11 +1,15 @@
-/*******************************************************
- * Copyright (C) 2021-2022 Konrad Wierzbik <desired.desire@protonmail.com>
+/************************************************************************************************
+ * Copyright (C) 2021-2022  <desired.desire@protonmail.com>
  *
- * This file is part of DesireSwapProject and was developed by Konrad Konrad Wierzbik.
+ * "Author" should be understood at person who is using email: <desired.desire@protonmail.com>
  *
- * DesireSwapProject files that are said to be developed by Konrad Wierzbik can not be copied 
- * and/or distributed without the express permission of Konrad Wierzbik.
- *******************************************************/
+ * This file is part of DesireSwap protocol and was developed by Author .
+ *
+ * DesireSwap protocol files that are said to be developed by Author can not be copied
+ * and/or distributed without the express permission of Author.
+ *
+ * Author gives permission to everyone to copy and use these files only in order to test them.
+ ************************************************************************************************/
 pragma solidity ^0.8.0;
 
 import '../libraries/PoolHelper.sol';
@@ -13,11 +17,9 @@ import '../interfaces/IDesireSwapV0Pool.sol';
 import '../interfaces/IDesireSwapV0Factory.sol';
 import '../interfaces/ILiquidityManagerHelper.sol';
 
-import 'hardhat/console.sol';
-
 contract LiquidityManagerHelper is ILiquidityManagerHelper {
-  uint256 private constant D = 10**18;
-  uint256 private constant d = 10**9;
+  uint256 private constant E27 = 10**27;
+  uint256 private constant E9 = 10**9;
 
   address public immutable factory;
 
@@ -50,14 +52,8 @@ contract LiquidityManagerHelper is ILiquidityManagerHelper {
   function sqrtPriceCurrent(address poolAddress) public view returns (uint256 sqrtPrice) {
     int24 inUseRange = IDesireSwapV0Pool(poolAddress).inUseRange();
     RangeInfo memory r = getFullRangeInfo(poolAddress, inUseRange);
-    //   console.log("cp");
-    //   console.log(r.reserve0);
-    //   console.log(r.reserve1);
-    //   console.log(r.sqrtPriceBottom);
-    //   console.log(r.sqrtPriceTop);
     uint256 L = PoolHelper.liqCoefficient(r.reserve0, r.reserve1, r.sqrtPriceBottom, r.sqrtPriceTop);
-    //   console.log(L);
-    sqrtPrice = PoolHelper.sqrt((L * L) / (r.reserve0 + (L * D) / r.sqrtPriceTop)**2) * D;
+    sqrtPrice = PoolHelper.sqrt((L * L) / (r.reserve0 + (L * E27) / r.sqrtPriceTop)**2) * E27;
   }
 
   function token0Supply(
@@ -70,7 +66,7 @@ contract LiquidityManagerHelper is ILiquidityManagerHelper {
   ) public view override returns (uint256 liqToAdd, uint256 amount1) {
     address poolAddress = getPoolAddress(tokenA, tokenB, fee);
     (uint256 amount0Help, uint256 amount1Help) = supply(poolAddress, lowestRangeIndex, highestRangeIndex);
-    liqToAdd = (D * d * amount0) / amount0Help;
+    liqToAdd = (E27 * E9 * amount0) / amount0Help;
     amount1 = (amount1Help * amount0) / amount0Help;
   }
 
@@ -86,7 +82,7 @@ contract LiquidityManagerHelper is ILiquidityManagerHelper {
     (uint256 amount0Help, uint256 amount1Help) = supply(poolAddress, lowestRangeIndex, highestRangeIndex);
     // console.log(amount0Help);
     // console.log(amount1Help);
-    liqToAdd = (D * d * amount1) / amount1Help;
+    liqToAdd = (E27 * E9 * amount1) / amount1Help;
     amount0 = (amount0Help * amount1) / amount1Help;
   }
 
@@ -95,44 +91,44 @@ contract LiquidityManagerHelper is ILiquidityManagerHelper {
     int24 lowestRangeIndex,
     int24 highestRangeIndex
   ) public view returns (uint256 amount0, uint256 amount1) {
-    uint256 liqToAdd = D * d;
+    uint256 liqToAdd = E27 * E9;
     int24 usingRange = IDesireSwapV0Pool(poolAddress).inUseRange();
     RangeInfo memory r;
     if (lowestRangeIndex > usingRange) {
       for (int24 i = highestRangeIndex; i >= lowestRangeIndex; i--) {
         r = getFullRangeInfo(poolAddress, i);
         require(r.activated, 'ranges not activated');
-        amount0 += (liqToAdd * D * (r.sqrtPriceTop - r.sqrtPriceBottom)) / (r.sqrtPriceBottom * r.sqrtPriceTop);
+        amount0 += (liqToAdd * E27 * (r.sqrtPriceTop - r.sqrtPriceBottom)) / (r.sqrtPriceBottom * r.sqrtPriceTop);
       }
     } else if (highestRangeIndex < usingRange) {
       for (int24 i = lowestRangeIndex; i <= highestRangeIndex; i++) {
         r = getFullRangeInfo(poolAddress, i);
         require(r.activated, 'ranges not activated');
-        amount1 += (liqToAdd * (r.sqrtPriceTop - r.sqrtPriceBottom)) / D;
+        amount1 += (liqToAdd * (r.sqrtPriceTop - r.sqrtPriceBottom)) / E27;
       }
     } else {
       for (int24 i = usingRange + 1; i <= highestRangeIndex; i++) {
         r = getFullRangeInfo(poolAddress, i);
         require(r.activated, 'ranges not activated');
-        amount0 += (liqToAdd * D * (r.sqrtPriceTop - r.sqrtPriceBottom)) / (r.sqrtPriceBottom * r.sqrtPriceTop);
+        amount0 += (liqToAdd * E27 * (r.sqrtPriceTop - r.sqrtPriceBottom)) / (r.sqrtPriceBottom * r.sqrtPriceTop);
       }
 
       for (int24 i = usingRange - 1; i >= lowestRangeIndex; i--) {
         r = getFullRangeInfo(poolAddress, i);
         require(r.activated, 'ranges not activated');
-        amount1 += (liqToAdd * (r.sqrtPriceTop - r.sqrtPriceBottom)) / D;
+        amount1 += (liqToAdd * (r.sqrtPriceTop - r.sqrtPriceBottom)) / E27;
       }
 
       r = getFullRangeInfo(poolAddress, usingRange);
-      uint256 LiqCoefBefore = PoolHelper.liqCoefficient(r.reserve0, r.reserve1, r.sqrtPriceBottom, r.sqrtPriceTop);
+      uint256 liqCoefBefore = PoolHelper.liqCoefficient(r.reserve0, r.reserve1, r.sqrtPriceBottom, r.sqrtPriceTop);
       uint256 amount0ToAdd;
       uint256 amount1ToAdd;
       if (r.reserve0 == 0 && r.reserve1 == 0) {
-        amount0ToAdd = (liqToAdd * D * (r.sqrtPriceTop - r.sqrtPriceBottom)) / (r.sqrtPriceBottom * r.sqrtPriceTop) / 2;
-        amount1ToAdd = (liqToAdd * (r.sqrtPriceTop - r.sqrtPriceBottom)) / D / 2;
+        amount0ToAdd = (liqToAdd * E27 * (r.sqrtPriceTop - r.sqrtPriceBottom)) / (r.sqrtPriceBottom * r.sqrtPriceTop) / 2;
+        amount1ToAdd = (liqToAdd * (r.sqrtPriceTop - r.sqrtPriceBottom)) / E27 / 2;
       } else {
-        amount0ToAdd = (liqToAdd * r.reserve0) / LiqCoefBefore;
-        amount1ToAdd = (liqToAdd * r.reserve1) / LiqCoefBefore;
+        amount0ToAdd = (liqToAdd * r.reserve0) / liqCoefBefore;
+        amount1ToAdd = (liqToAdd * r.reserve1) / liqCoefBefore;
       }
       amount0 += amount0ToAdd;
       amount1 += amount1ToAdd;

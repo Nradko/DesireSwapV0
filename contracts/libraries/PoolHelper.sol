@@ -1,17 +1,19 @@
-/*******************************************************
- * Copyright (C) 2021-2022 Konrad Wierzbik <desired.desire@protonmail.com>
+/************************************************************************************************
+ * Copyright (C) 2021-2022  <desired.desire@protonmail.com>
  *
- * This file is part of DesireSwapProject and was developed by Konrad Konrad Wierzbik.
+ * "Author" should be understood at person who is using email: <desired.desire@protonmail.com>
  *
- * DesireSwapProject files that are said to be developed by Konrad Wierzbik can not be copied 
- * and/or distributed without the express permission of Konrad Wierzbik.
- *******************************************************/
+ * This file is part of DesireSwap protocol and was developed by Author .
+ *
+ * DesireSwap protocol files that are said to be developed by Author can not be copied
+ * and/or distributed without the express permission of Author.
+ *
+ * Author gives permission to everyone to copy and use these files only in order to test them.
+ ************************************************************************************************/
 pragma solidity ^0.8.0;
 
 library PoolHelper {
-  uint256 private constant DD = 10**36;
-  uint256 private constant D = 10**18;
-  uint256 private constant d = 10**9;
+  uint256 private constant E18 = 10**18;
 
   function sqrt(uint256 y) internal pure returns (uint256 z) {
     if (y > 3) {
@@ -37,9 +39,9 @@ library PoolHelper {
     uint256 sqrt0,
     uint256 sqrt1
   ) internal pure returns (uint256) {
-    uint256 b = (x * sqrt0) / D + (y * D) / sqrt1;
-    uint256 _sqrt = sqrt(b**2 + 4 * ((x * y * (D - (sqrt0 * D) / sqrt1)) / D));
-    return (((b + _sqrt) * D) / (2 * (D - (D * sqrt0) / sqrt1)));
+    uint256 b = (x * sqrt0) / E18 + (y * E18) / sqrt1;
+    uint256 _sqrt = sqrt(b**2 + 4 * ((x * y * (E18 - (sqrt0 * E18) / sqrt1)) / E18));
+    return (((b + _sqrt) * E18) / (2 * (E18 - (E18 * sqrt0) / sqrt1)));
   }
 
   function AmountIn(
@@ -49,12 +51,17 @@ library PoolHelper {
     uint256 sqrt0,
     uint256 sqrt1,
     uint256 amountOut
-  ) internal pure returns (uint256) {
+  ) internal pure returns (uint256 amountIn) {
+    if (amountOut == 0) return 0;
     uint256 liq = liqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
-    require(liq > 0, 'Try different amounts');
+    require(liq > 0, 'HAIn');
     if (zeroForOne) {
-      return ((liq * liq) / (reserve1 + (liq * sqrt0) / D - amountOut) - (reserve0 + (liq * D) / sqrt1)); //dim = 0
-    } else return ((liq * liq) / (reserve0 + (liq * D) / sqrt1 - amountOut) - (reserve1 + (liq * sqrt0) / D)); // dim = 0
+      amountIn = ((liq * liq) / (reserve1 + (liq * sqrt0) / E18 - amountOut) - (reserve0 + (liq * E18) / sqrt1));
+      if(amountIn>0) amountIn++;
+    } else {
+    amountIn = ((liq * liq) / (reserve0 + (liq * E18) / sqrt1 - amountOut) - (reserve1 + (liq * sqrt0) / E18)); // dim = 0
+    if(amountIn>0) amountIn++;
+    }
   }
 
   function AmountOut(
@@ -64,66 +71,16 @@ library PoolHelper {
     uint256 sqrt0,
     uint256 sqrt1,
     uint256 amountIn
-  ) internal pure returns (uint256) {
+  ) internal pure returns (uint256 amountOut) {
+    if (amountIn == 0) return 0;
     uint256 liq = liqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
-    require(liq > 0, 'Try different amounts');
+    require(liq > 0, 'HAOut');
     if (zeroForOne) {
-      return ((reserve1 + (liq * sqrt0) / D) - (liq * liq) / (reserve0 + (liq * D) / sqrt1 + amountIn));
+      amountOut = ((reserve1 + (liq * sqrt0) / E18) - (liq * liq) / (reserve0 + (liq * E18) / sqrt1 + amountIn));
+      if(amountOut > 1) amountOut--;
+    } else{
+      amountOut =  ((reserve0 + (liq * E18) / sqrt1) - (liq * liq) / (reserve1 + (liq * sqrt0) / E18 + amountIn));
+      if(amountOut > 1) amountOut--;
     }
-    return ((reserve0 + (liq * D) / sqrt1) - (liq * liq) / (reserve1 + (liq * sqrt0) / D + amountIn));
   }
-
-  /* UNUSED
-    function currentSqrtPrice(
-        uint256 reserve0, uint256 reserve1,
-        uint256 sqrt0, uint256 sqrt1)
-        internal pure
-        returns (uint256)
-    {
-      // first calculate Lq Coef with higher pecision
-      uint256 b = (x * sqrt0) + (y * DD) / sqrt1;
-      uint256 _sqrt = sqrt(b**2 + 4 * ((x * y * (DD - (sqrt0 * DD) / sqrt1))));
-      uint256 liq = (((b + _sqrt) * D) / (2 * (D - (D * sqrt0) / sqrt1)));
-      return (liq/(reserve1 + liq*sqrt0/D));
-    }
-    */
-  // returns amount of token0 in that would be in range if all token0 were taken out
-
-  /* UNUSED
-    function inToken0Supply(
-        uint256 reserve0, uint256 reserve1,
-        uint256 sqrt0, uint256 sqrt1)
-        internal pure
-        returns (uint256 inToken0Supply)
-    {
-        uint256 liq = LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
-        inToken0Supply = ((sqrt1*reserve0*reserve1*D)/liq + reserve1*sqrt0*sqrt1)/D**2 + reserve0;
-    }
-    */
-
-  // currentPrice *10**36
-  /*UNUSED
-    function inToken0Value(
-        uint256 reserve0, uint256 reserve1,
-        uint256 sqrt0, uint256 sqrt1)
-        internal pure
-        returns (uint256 inToken0Value)
-    {
-        uint256 liq = LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
-        inToken0Value = reserve0 + (liq*liq/(reserve0 + liq/sqrt1)**2)*reserve1/10**36;
-    }
-    */
-
-  // returns amount of token1 in that would be in range if all token0 were taken out
-  /*UNUSED
-    function inToken1Supply(
-        uint256 reserve0, uint256 reserve1,
-        uint256 sqrt0, uint256 sqrt1)
-        internal pure
-        returns (uint256 inToken1Supply)
-    {
-        uint256 liq = LiqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
-        inToken1Supply = (reserve0*reserve1*D**3/sqrt1/liq + reserve0*D**2*sqrt0/sqrt1)/D**2 + reserve1;
-    }
-    */
 }

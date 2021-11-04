@@ -9,7 +9,9 @@ interface IPoolDeployer {
   /// @param tokenA_ address of token0
   /// @param tokenB_ address of token1
   /// @param fee_ swap fee of the pool
-  /// @param sqrtRangeMultiplier_ defines range sizes
+  /// @param ticksInRange_ defines size of Pool
+  /// @param sqrtRangeMultiplier_ size of Pool
+  /// @param sqrtRangeMultiplier100_ (sizeOfPool)**100
   /// @param name_ name of pool
   /// @param symbol_ symbol of pool
   function deployPool(
@@ -18,7 +20,9 @@ interface IPoolDeployer {
     address tokenA_,
     address tokenB_,
     uint256 fee_,
+    uint256 ticksInRange_,
     uint256 sqrtRangeMultiplier_,
+    uint256 sqrtRangeMultiplier100_,
     string memory name_,
     string memory symbol_
   ) external returns (address poolAddress);
