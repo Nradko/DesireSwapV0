@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 interface IDesireSwapV0PoolView {
-  
   /// return the global variables ///
   function initialized() external view returns (bool);
 
@@ -18,7 +17,6 @@ interface IDesireSwapV0PoolView {
 
   function lowestActivatedRange() external view returns (int24);
 
-  
   /// @return returns balance of token0 in pool
   function balance0() external view returns (uint256);
 
@@ -30,7 +28,6 @@ interface IDesireSwapV0PoolView {
 
   /// @return _totalReserve0 and _totalReserve1, amount of token0 and token1 in pool that is not the collected fee
   function getTotalReserves() external view returns (uint256 _totalReserve0, uint256 _totalReserve1);
-
 
   /// note returns data of range with index = index
   /// @param index of range which data is returned

@@ -9,9 +9,9 @@ export const contractNames = {
   liquidityManagerHelper: 'LiquidityManagerHelper',
   tokenA: 'TOKENA',
   tokenB: 'TOKENB',
-  token:'TestERC20',
+  token: 'TestERC20',
   pool: 'DesireSwapV0Pool',
-  positionViewer: 'PositionViewer'
+  positionViewer: 'PositionViewer',
 };
 
 // eslint-disable-next-line @typescript-eslint/no-magic-numbers

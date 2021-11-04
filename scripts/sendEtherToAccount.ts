@@ -1,17 +1,6 @@
 import { getDefaultProvider, utils, Wallet } from 'ethers';
 
-const argvObj = process.argv.reduce((acc, val, index) => {
-  if (val.substr(0, 2) !== '--') return acc;
-  acc[val.substr(2)] = process.argv[index + 1];
-  return acc;
-}, {} as Record<string, unknown>);
-
-(async (args: Record<string, unknown>) => {
-  const receiverAddress = args['address'] as any;
-  if (!receiverAddress) throw new Error('provide receiver address with --address flag');
-  const amountInEther = args['amount'] as any;
-  if (!receiverAddress) throw new Error('provide amount with --amount flag');
-
+export const sendEtherToAccount = async (receiverAddress: any, amountInEther: any) => {
   const networkAddress = 'http://127.0.0.1:8545/';
 
   const provider = getDefaultProvider(networkAddress);
@@ -34,6 +23,21 @@ const argvObj = process.argv.reduce((acc, val, index) => {
     // A transaction result can be checked in a etherscan with a transaction hash which can be obtained here.
   });
   console.log('sent');
+};
+
+const argvObj = process.argv.reduce((acc, val, index) => {
+  if (val.substr(0, 2) !== '--') return acc;
+  acc[val.substr(2)] = process.argv[index + 1];
+  return acc;
+}, {} as Record<string, unknown>);
+
+(async (args: Record<string, unknown>) => {
+  if (require.main !== module) return;
+  const receiverAddress = args['address'] as any;
+  if (!receiverAddress) throw new Error('provide receiver address with --address flag');
+  const amountInEther = args['amount'] as any;
+  if (!receiverAddress) throw new Error('provide amount with --amount flag');
+  await sendEtherToAccount(receiverAddress, amountInEther);
   process.exit(0);
 })(argvObj).catch((e) => {
   console.log('ERROR');

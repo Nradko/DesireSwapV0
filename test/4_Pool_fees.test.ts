@@ -12,7 +12,8 @@ import { deployContract } from '../scripts/utils';
 import { DesireSwapV0Factory, DesireSwapV0Pool, IDesireSwapV0Factory, LiquidityManager, PoolDeployer, SwapRouter, TestERC20 } from '../typechain';
 
 const ADDRESS_ZERO = '0x0000000000000000000000000000000000000000';
-const MAX_UINT = '57896044618658097711785492504343953926634992332820282019728792003956564819967'; //Max Int
+const MAX_INT = '57896044618658097711785492504343953926634992332820282019728792003956564819967'; //Max Int
+/* eslint-disable @typescript-eslint/no-magic-numbers */
 const E6 = BigNumber.from(10).pow(6);
 const E14 = BigNumber.from(10).pow(14);
 const E18 = BigNumber.from(10).pow(18);
@@ -22,13 +23,12 @@ const protocolFee = BigNumber.from(200000); //1E6
 
 const toInitialize = [-974];
 const supplyFromInit = [3];
+/* eslint-enable @typescript-eslint/no-magic-numbers */
 for (let poolType = 0; poolType < fees.length; poolType++) {
   for (let init = 0; init < toInitialize.length; init++) {
     for (let sup = 0; sup < supplyFromInit.length; sup++) {
       describe('4_PoolTest', async function () {
         this.timeout(0);
-        const lowestIndex = toInitialize[init] - supplyFromInit[sup];
-        const highestIndex = toInitialize[init] + supplyFromInit[sup];
         let deployer: PoolDeployer;
         let factory: IDesireSwapV0Factory;
         let swapRouter: SwapRouter;
@@ -60,12 +60,12 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
           for (let i = 1; i < users.length; i++) {
             await tokenA.connect(owner).transfer(users[i].address, usersTokensAmount);
             await tokenB.connect(owner).transfer(users[i].address, usersTokensAmount);
-            await tokenA.connect(users[i]).approve(liqManager.address, MAX_UINT);
-            await tokenB.connect(users[i]).approve(liqManager.address, MAX_UINT);
+            await tokenA.connect(users[i]).approve(liqManager.address, MAX_INT);
+            await tokenB.connect(users[i]).approve(liqManager.address, MAX_INT);
           }
           for (let i = 0; i < users.length; i++) {
-            await tokenA.connect(users[i]).approve(swapRouter.address, MAX_UINT);
-            await tokenB.connect(users[i]).approve(swapRouter.address, MAX_UINT);
+            await tokenA.connect(users[i]).approve(swapRouter.address, MAX_INT);
+            await tokenB.connect(users[i]).approve(swapRouter.address, MAX_INT);
           }
           await factory.connect(owner).createPool(tokenA.address, tokenB.address, fees[poolType], 'DSV0P: token A/tokenB pair', 'DSP tA-tB ()');
           poolAddress = await factory.poolAddress(tokenA.address, tokenB.address, fees[poolType]);
@@ -88,10 +88,10 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
               lowestRangeIndex: toInitialize[init],
               highestRangeIndex: toInitialize[init],
               liqToAdd: E14,
-              amount0Max: MAX_UINT,
-              amount1Max: MAX_UINT,
+              amount0Max: MAX_INT,
+              amount1Max: MAX_INT,
               recipient: user1.address,
-              deadline: MAX_UINT,
+              deadline: MAX_INT,
             });
             await liqManager.connect(user1).supply({
               token0: token0.address,
@@ -100,10 +100,10 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
               lowestRangeIndex: toInitialize[init] - supplyFromInit[sup],
               highestRangeIndex: toInitialize[init] + supplyFromInit[sup],
               liqToAdd: E14.mul(E14),
-              amount0Max: MAX_UINT,
-              amount1Max: MAX_UINT,
+              amount0Max: MAX_INT,
+              amount1Max: MAX_INT,
               recipient: user1.address,
-              deadline: MAX_UINT,
+              deadline: MAX_INT,
             });
             const totalSupplied = await pool.getTotalReserves();
             let totalResrves = totalSupplied;
@@ -114,9 +114,9 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
               tokenOut: token1.address,
               fee: fees[poolType],
               recipient: user2.address,
-              deadline: MAX_UINT,
+              deadline: MAX_INT,
               amountOut: totalResrves[1].toString(),
-              amountInMaximum: MAX_UINT,
+              amountInMaximum: MAX_INT,
               sqrtPriceLimitX96: '0',
             });
 
@@ -129,9 +129,9 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
               tokenOut: token0.address,
               fee: fees[poolType],
               recipient: user2.address,
-              deadline: MAX_UINT,
+              deadline: MAX_INT,
               amountOut: amountOut,
-              amountInMaximum: MAX_UINT,
+              amountInMaximum: MAX_INT,
               sqrtPriceLimitX96: '0',
             });
             totalResrves = await pool.getTotalReserves();
@@ -152,10 +152,10 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
               lowestRangeIndex: toInitialize[init],
               highestRangeIndex: toInitialize[init],
               liqToAdd: E14,
-              amount0Max: MAX_UINT,
-              amount1Max: MAX_UINT,
+              amount0Max: MAX_INT,
+              amount1Max: MAX_INT,
               recipient: user1.address,
-              deadline: MAX_UINT,
+              deadline: MAX_INT,
             });
             await liqManager.connect(user1).supply({
               token0: token0.address,
@@ -164,10 +164,10 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
               lowestRangeIndex: toInitialize[init] - supplyFromInit[sup],
               highestRangeIndex: toInitialize[init] + supplyFromInit[sup],
               liqToAdd: E14.mul(E14),
-              amount0Max: MAX_UINT,
-              amount1Max: MAX_UINT,
+              amount0Max: MAX_INT,
+              amount1Max: MAX_INT,
               recipient: user1.address,
-              deadline: MAX_UINT,
+              deadline: MAX_INT,
             });
             const totalSupplied = await pool.getTotalReserves();
             let totalResrves = totalSupplied;
@@ -177,9 +177,9 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
               tokenOut: token0.address,
               fee: fees[poolType],
               recipient: user2.address,
-              deadline: MAX_UINT,
+              deadline: MAX_INT,
               amountOut: totalResrves[0].toString(),
-              amountInMaximum: MAX_UINT,
+              amountInMaximum: MAX_INT,
               sqrtPriceLimitX96: '0',
             });
             totalResrves = await pool.getTotalReserves();
@@ -190,9 +190,9 @@ for (let poolType = 0; poolType < fees.length; poolType++) {
               tokenOut: token1.address,
               fee: fees[poolType],
               recipient: user2.address,
-              deadline: MAX_UINT,
+              deadline: MAX_INT,
               amountOut: amountOut,
-              amountInMaximum: MAX_UINT,
+              amountInMaximum: MAX_INT,
               sqrtPriceLimitX96: '0',
             });
             totalResrves = await pool.getTotalReserves();
