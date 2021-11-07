@@ -19,6 +19,7 @@ interface IDesireSwapV0PoolActions {
     address to,
     bool zeroForOne,
     int256 amount,
+    uint256 sqrtPriceLimit, //unused yet
     bytes calldata data
   ) external returns (int256, int256);
 

@@ -281,7 +281,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
 
   // This function uses swapInRange to make any swap.
   // amount > 0 amount is exact token inflow, amount < 0 amount is exact token outflow.
-  // sqrtPriceLimit was removed.
+  // sqrtPriceLimit is not used yet.
 
   struct SwapParams {
     address to;
@@ -295,6 +295,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     address to,
     bool zeroForOne,
     int256 amount,
+    uint256 sqrtPriceLimit, //unused yet
     bytes calldata data
   ) external override returns (int256, int256) {
     if (msg.sender != swapRouter) require(IDesireSwapV0Factory(factory).allowlisted(msg.sender), 'Ps0');
