@@ -239,7 +239,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     uint256 value11;
   }
 
-  /// @notice this method is used to perfom swaps. it changes data of range by amountOut and amountIn
+  /// @notice this method is used to perfom swaps. it changes reserves of inUse range by amountOut and amountIn
   /// @param index of range which data will be modified
   /// @param zeroForOne swapping token0 for token1 (true) ot token1 for token0 (false)
   /// @param amountOut amountOut of token that goes out of pool that should be transferred out
@@ -280,9 +280,8 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   }
 
   // This function uses swapInRange to make any swap.
-  // The calldata is not yet used. SwapRoutes!!!!!!!
   // amount > 0 amount is exact token inflow, amount < 0 amount is exact token outflow.
-  // sqrtPriceLimit is price
+  // sqrtPriceLimit was removed.
 
   struct SwapParams {
     address to;
