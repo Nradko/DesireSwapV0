@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
+import '@openzeppelin/contracts/token/ERC721/IERC721.sol';
 
-interface ITicket {
+interface ITicket is IERC721 {
   struct TicketData {
     int24 lowestRangeIndex;
     int24 highestRangeIndex;
     uint256 liqAdded;
-    address owner;
   }
 
   /// @notice returns the nextId that will be assigned to next minted Ticket
@@ -16,10 +16,6 @@ interface ITicket {
   /// @param ticketId of ticket
   /// @return TicketData assigned to the ticket
   function getTicketData(uint256 ticketId) external view returns (TicketData memory);
-
-  /// @param ticketId of ticket
-  /// @return ticket's owner address
-  function getTicketOwner(uint256 ticketId) external view returns (address);
 
   /// @param ticketId of ticket
   /// @param index of range

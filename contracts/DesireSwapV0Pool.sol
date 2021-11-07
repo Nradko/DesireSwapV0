@@ -464,7 +464,6 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     _ticketData[ticketId].lowestRangeIndex = lowestRangeIndex;
     _ticketData[ticketId].highestRangeIndex = highestRangeIndex;
     _ticketData[ticketId].liqAdded = liqToAdd;
-    _ticketData[ticketId].owner = to;
     if (lowestRangeIndex > usingRange) //in this case ranges.reserve1 should be 0
     {
       for (int24 i = highestRangeIndex; i >= lowestRangeIndex; i--) {

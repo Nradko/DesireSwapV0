@@ -79,7 +79,7 @@ contract PositionViewer {
       amount0: amount0,
       amount1: amount1,
       feeAmount: pool.fee(),
-      owner: pool.getTicketData(ticketId).owner
+      owner: pool.ownerOf(ticketId)
     });
     return (data);
   }
@@ -102,10 +102,5 @@ contract PositionViewer {
       }
     }
     return (positionDataList);
-  }
-
-  function getTicketOwner(address poolAddress, uint256 ticketId) public view returns (address) {
-    IDesireSwapV0Pool pool = IDesireSwapV0Pool(poolAddress);
-    return pool.getTicketOwner(ticketId);
   }
 }

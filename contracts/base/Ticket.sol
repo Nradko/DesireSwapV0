@@ -41,10 +41,6 @@ contract Ticket is ERC721, ITicket {
     return _ticketData[ticketId_];
   }
 
-  function getTicketOwner(uint256 ticketId_) external view override returns (address) {
-    return _ticketData[ticketId_].owner;
-  }
-
   function getTicketSupplyData(uint256 ticketId_, int24 index_) external view override returns (uint256) {
     return _ticketSupplyData[ticketId_][index_];
   }
