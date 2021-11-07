@@ -13,11 +13,11 @@ export const contractNamesHardhatConstsMap = Object.freeze({
   [contractNames.tokenB]: 'TOKENB',
   [contractNames.pool]: 'POOL',
   [contractNames.positionViewer]: 'POSITION_VIEWER',
+  [contractNames.swapQuoter]: 'SWAP_QUOTER',
 });
 
 export const generateHardhatConsts = (contractMetadatas: Record<string, ContractInput>) => {
-  const content = `
-export const DESIRE_SWAP_HARDHAT_ADDRESSES = {
+  const content = `export const DESIRE_SWAP_HARDHAT_ADDRESSES = {
   ${Object.entries(contractNamesHardhatConstsMap)
     .map(([contractName, hardhatConstName], i, arr) => `${hardhatConstName}: '${contractMetadatas[contractName].address}',\n${i !== arr.length - 1 ? '  ' : ''}`)
     .join('')}};`;
