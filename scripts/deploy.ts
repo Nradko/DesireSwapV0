@@ -9,7 +9,7 @@ import 'hardhat/types/runtime';
 import { DesireSwapV0Factory, DesireSwapV0Pool, LiquidityManager, LiquidityManagerHelper, PositionViewer, SwapRouter, UniswapInterfaceMulticall } from '../typechain';
 import { PoolDeployer } from '../typechain/PoolDeployer';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { contractNames, FEE } from './consts';
+import { contractNames, FeeAmount } from './consts';
 import { generateHardhatConsts } from './hardhatContsGenerator';
 import { deployContract } from './utils';
 import { BigNumber } from 'ethers';
@@ -85,8 +85,8 @@ const deployTestTokensAndPool = async (owner: SignerWithAddress, factory: Desire
   console.log('TA address: %s', tokenA.address);
   console.log('TB address: %s', tokenB.address);
 
-  await factory.createPool(tokenA.address, tokenB.address, FEE.toString(), 'DesireSwap LP: TOKENA-TOKENB', 'DS_TA-TB_LP');
-  const poolAddress = await factory.poolAddress(tokenA.address, tokenB.address, FEE.toString());
+  await factory.createPool(tokenA.address, tokenB.address, FeeAmount.MEDIUM.toString(), 'DesireSwap LP: TOKENA-TOKENB', 'DS_TA-TB_LP');
+  const poolAddress = await factory.poolAddress(tokenA.address, tokenB.address, FeeAmount.MEDIUM.toString());
   console.log('Pool address: %s', poolAddress);
   const PoolFactory = await hardhat.ethers.getContractFactory(contractNames.pool);
   const pool = PoolFactory.attach(poolAddress) as DesireSwapV0Pool;
@@ -113,7 +113,7 @@ const deployTestTokensAndPool = async (owner: SignerWithAddress, factory: Desire
   await liqManager.connect(owner).supply({
     token0: tokenA.address,
     token1: tokenB.address,
-    fee: FEE.toString(),
+    fee: FeeAmount.MEDIUM.toString(),
     lowestRangeIndex: startingInUseRange,
     highestRangeIndex: startingInUseRange,
     liqToAdd: '10000000',

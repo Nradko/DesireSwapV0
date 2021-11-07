@@ -1,5 +1,3 @@
-import { BigNumber } from 'ethers';
-
 export const contractNames = {
   multicall: 'UniswapInterfaceMulticall',
   poolDeployer: 'PoolDeployer',
@@ -14,5 +12,8 @@ export const contractNames = {
   positionViewer: 'PositionViewer',
 };
 
-// eslint-disable-next-line @typescript-eslint/no-magic-numbers
-export const FEE = BigNumber.from(500).mul(BigNumber.from(10).pow(12));
+export enum FeeAmount {
+  LOW = 400,
+  MEDIUM = 500,
+  HIGH = 3000,
+}
