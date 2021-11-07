@@ -16,14 +16,11 @@ export const contractNamesHardhatConstsMap = Object.freeze({
 });
 
 export const generateHardhatConsts = (contractMetadatas: Record<string, ContractInput>) => {
-  const content = `import { BigNumber } from "ethers";
-
+  const content = `
 export const DESIRE_SWAP_HARDHAT_ADDRESSES = {
   ${Object.entries(contractNamesHardhatConstsMap)
     .map(([contractName, hardhatConstName], i, arr) => `${hardhatConstName}: '${contractMetadatas[contractName].address}',\n${i !== arr.length - 1 ? '  ' : ''}`)
-    .join('')}};
-// eslint-disable-next-line @typescript-eslint/no-magic-numbers
-export const FEE = BigNumber.from(500).mul(BigNumber.from(10).pow(12));`;
+    .join('')}};`;
 
   try {
     fs.writeFileSync('./hardhatConsts.ts', content);

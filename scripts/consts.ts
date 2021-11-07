@@ -15,4 +15,4 @@ export const contractNames = {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-magic-numbers
-export const FEE = BigNumber.from(500).mul(BigNumber.from(10).pow(12));
+export const FEE = BigNumber.from(500);

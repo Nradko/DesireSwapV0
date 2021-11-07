@@ -15,7 +15,6 @@ pragma solidity ^0.8.0;
 import '../interfaces/pool/ITicket.sol';
 import '@openzeppelin/contracts/token/ERC721/ERC721.sol';
 
-
 contract Ticket is ERC721, ITicket {
   // struct TicketData can be found in ITicket
 
@@ -42,6 +41,10 @@ contract Ticket is ERC721, ITicket {
     return _ticketData[ticketId_];
   }
 
+  function getTicketOwner(uint256 ticketId_) external view override returns (address) {
+    return _ticketData[ticketId_].owner;
+  }
+
   function getTicketSupplyData(uint256 ticketId_, int24 index_) external view override returns (uint256) {
     return _ticketSupplyData[ticketId_][index_];
   }
@@ -50,7 +53,7 @@ contract Ticket is ERC721, ITicket {
     return _addressTicketsAmount[owner_];
   }
 
-  function getAddressTickets(address owner_, uint256 position_) external view override returns (uint256) {
+  function getAddressTicketsByPosition(address owner_, uint256 position_) external view override returns (uint256) {
     return _addressTickets[owner_][position_];
   }
 
@@ -58,10 +61,10 @@ contract Ticket is ERC721, ITicket {
     return _ticketPosition[ticketId_];
   }
 
-  function getAddressTicketIdList(address owner_) external view override returns(uint256[] memory ticketIdList){
-    uint256 ticketAmount = getAddressTicketsAmount( owner_);
-    for (uint256 i = 1; i <= ticketAmount; i++){
-      ticketIdList[i]=(_addressTickets[owner_][i]);
+  function getAddressTicketIdList(address owner_) external view override returns (uint256[] memory ticketIdList) {
+    uint256 ticketAmount = getAddressTicketsAmount(owner_);
+    for (uint256 i = 1; i <= ticketAmount; i++) {
+      ticketIdList[i] = (_addressTickets[owner_][i]);
     }
   }
 
@@ -72,7 +75,7 @@ contract Ticket is ERC721, ITicket {
   ) internal override {
     uint256 ticketPosition = _ticketPosition[ticketId];
     _addressTickets[from][ticketPosition] = 0;
-    if(to != address(0)){
+    if (to != address(0)) {
       uint256 length = _addressTicketsAmount[to]++;
       if (length == 0) {
         length++;
@@ -80,8 +83,7 @@ contract Ticket is ERC721, ITicket {
       }
       _addressTickets[to][length] = ticketId;
       _ticketPosition[ticketId] = length;
-    }
-    else{
+    } else {
       _ticketPosition[ticketId] = 0;
     }
   }

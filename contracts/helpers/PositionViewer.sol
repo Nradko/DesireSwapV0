@@ -29,6 +29,8 @@ contract PositionViewer {
     int24 highestTick;
     uint256 amount0;
     uint256 amount1;
+    uint256 feeAmount;
+    address owner;
   }
 
   function getCurrentSqrtPrice(address poolAddress) public view returns (uint256) {
@@ -75,9 +77,11 @@ contract PositionViewer {
       lowestTick: pool.getTicketData(ticketId).lowestRangeIndex,
       highestTick: pool.getTicketData(ticketId).highestRangeIndex,
       amount0: amount0,
-      amount1: amount1
+      amount1: amount1,
+      feeAmount: pool.fee(),
+      owner: pool.getTicketData(ticketId).owner
     });
-    return data;
+    return (data);
   }
 
   function getPositionDataList(address poolAddress, address owner) external view returns (PositionData[] memory positionDataList) {
@@ -85,19 +89,23 @@ contract PositionViewer {
     uint256 ticketAmount = pool.getAddressTicketsAmount(owner);
     uint256 positionCount;
     for (uint256 i = 1; i < ticketAmount; i++) {
-      uint256 ticketId = pool.getAddressTickets(owner, i);
+      uint256 ticketId = pool.getAddressTicketsByPosition(owner, i);
       if (ticketId != 0) positionCount++;
     }
     positionDataList = new PositionData[](positionCount);
     positionCount = 0;
     for (uint256 i = 1; i < ticketAmount; i++) {
-      uint256 ticketId = pool.getAddressTickets(owner, i);
+      uint256 ticketId = pool.getAddressTicketsByPosition(owner, i);
       if (ticketId != 0) {
         positionDataList[positionCount] = getPositionData(poolAddress, ticketId);
         positionCount++;
       }
     }
-    return positionDataList;
-    //currentSqrtPrice = getCurrentSqrtPrice(poolAddress);
+    return (positionDataList);
+  }
+
+  function getTicketOwner(address poolAddress, uint256 ticketId) public view returns (address) {
+    IDesireSwapV0Pool pool = IDesireSwapV0Pool(poolAddress);
+    return pool.getTicketOwner(ticketId);
   }
 }

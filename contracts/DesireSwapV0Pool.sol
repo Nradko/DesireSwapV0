@@ -195,11 +195,11 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     totalReserve1 = add1 ? totalReserve1 + toAdd1 : totalReserve1 - toAdd1;
 
     if (isSwap) {
-      if (updatedReserve0 == 0 && ranges[inUseRange+1].activated && index == inUseRange) {
+      if (updatedReserve0 == 0 && ranges[inUseRange + 1].activated && index == inUseRange) {
         inUseRange++;
         emit InUseRangeChanged(index, index + 1);
       }
-      if (updatedReserve1 == 0 && ranges[inUseRange-1].activated && index == inUseRange) {
+      if (updatedReserve1 == 0 && ranges[inUseRange - 1].activated && index == inUseRange) {
         inUseRange--;
         emit InUseRangeChanged(index, index - 1);
       }
@@ -228,7 +228,6 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   /// POOL ACTIONS
   ///
 
-
   struct HelpData {
     uint256 lastBalance0;
     uint256 lastBalance1;
@@ -253,7 +252,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     require(index == inUseRange, 'PsIR0');
     HelpData memory h = HelpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: 0, balance1: 0, value00: 0, value01: 0, value10: 0, value11: 0});
 
-    (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(index);  // reserve0, reserve1, sqrtPriceBot, sqrtPriceTop
+    (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(index); // reserve0, reserve1, sqrtPriceBot, sqrtPriceTop
     require((zeroForOne && amountOut <= h.value01) || (!zeroForOne && amountOut <= h.value00), 'PsIR1');
     uint256 amountInHelp = PoolHelper.AmountIn(zeroForOne, h.value00, h.value01, h.value10, h.value11, amountOut); // do not include fees;
     uint256 collectedFee = (amountInHelp * fee) / E6;
@@ -264,10 +263,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     }
     if (zeroForOne) {
       //??
-      require(
-        PoolHelper.liqCoefficient(h.value00 + amountInHelp, h.value01 - amountOut, h.value10, h.value11) >= PoolHelper.liqCoefficient(h.value00, h.value01, h.value10, h.value11),
-        'PsIR2'
-      ); //assure that after swap there is more or equal liquidity. If PoolHelper.AmountIn works correctly it can be removed.
+      require(PoolHelper.liqCoefficient(h.value00 + amountInHelp, h.value01 - amountOut, h.value10, h.value11) >= PoolHelper.liqCoefficient(h.value00, h.value01, h.value10, h.value11), 'PsIR2'); //assure that after swap there is more or equal liquidity. If PoolHelper.AmountIn works correctly it can be removed.
       //!!
       require(amountOut <= h.value01, 'PsIR2');
       _updateRangeReserves(index, amountInHelp, amountOut, true, false, true);
@@ -275,10 +271,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     // token1 for token0 // token1 in; token0 out;
     else {
       //??
-      require(
-        PoolHelper.liqCoefficient(h.value00 - amountOut, h.value01 + amountInHelp, h.value10, h.value11) >= PoolHelper.liqCoefficient(h.value00, h.value01, h.value10, h.value11),
-        'PsIR3'
-      ); //assure that after swap there is more or equal liquidity. If PoolHelper.AmountIn works correctly it can be removed.
+      require(PoolHelper.liqCoefficient(h.value00 - amountOut, h.value01 + amountInHelp, h.value10, h.value11) >= PoolHelper.liqCoefficient(h.value00, h.value01, h.value10, h.value11), 'PsIR3'); //assure that after swap there is more or equal liquidity. If PoolHelper.AmountIn works correctly it can be removed.
       //!!
       require(amountOut <= h.value00, 'PsIR4');
       _updateRangeReserves(index, amountOut, amountInHelp, false, true, true);
@@ -298,7 +291,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     bytes data;
   }
 
-/// inherit doc from IDesreSwapV0Pool
+  /// inherit doc from IDesreSwapV0Pool
   function swap(
     address to,
     bool zeroForOne,
@@ -332,7 +325,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         usingRange = inUseRange;
         usingReserve = s.zeroForOne ? ranges[usingRange].reserve1 : ranges[usingRange].reserve0;
       }
-      if(remained > 0) amountRecieved += _swapInRange(usingRange, s.zeroForOne, remained);
+      if (remained > 0) amountRecieved += _swapInRange(usingRange, s.zeroForOne, remained);
       amountSend = uint256(-s.amount);
     }
     //
@@ -353,13 +346,13 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
         usingReserve = s.zeroForOne ? h.value01 : h.value00;
         amountOut = PoolHelper.AmountOut(s.zeroForOne, h.value00, h.value01, h.value10, h.value11, remained - predictedFee);
       }
-      
+
       uint256 help = _swapInRange(usingRange, s.zeroForOne, amountOut);
       require(help <= remained, 'Ps3');
       remained -= help;
       amountSend += amountOut;
       amountRecieved = uint256(s.amount) - remained;
-      }
+    }
     //!!!
     TransferHelper.safeTransfer(s.zeroForOne ? token1 : token0, s.to, amountSend);
     IDesireSwapV0SwapCallback(msg.sender).desireSwapV0SwapCallback(s.zeroForOne ? int256(amountRecieved) : -int256(amountSend), s.zeroForOne ? -int256(amountSend) : int256(amountRecieved), data);
@@ -395,15 +388,16 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   ) private returns (uint256 amount0ToAdd) {
     if (!ranges[index].activated) activate(index);
     (
-      uint256 reserve0, 
-      /*unused*/,
+      uint256 reserve0,
+      ,
+      /*unused*/
       uint256 sqrtPriceBottom,
       uint256 sqrtPriceTop
     ) = getRangeInfo(index);
-    if(sqrtPriceBottom < E18){
-      amount0ToAdd = liqToAdd * E18 * (sqrtPriceTop - sqrtPriceBottom) / (sqrtPriceBottom * sqrtPriceTop);
-    }else{
-      amount0ToAdd = liqToAdd * (sqrtPriceTop - sqrtPriceBottom) / (sqrtPriceBottom * sqrtPriceTop / E18);
+    if (sqrtPriceBottom < E18) {
+      amount0ToAdd = (liqToAdd * E18 * (sqrtPriceTop - sqrtPriceBottom)) / (sqrtPriceBottom * sqrtPriceTop);
+    } else {
+      amount0ToAdd = (liqToAdd * (sqrtPriceTop - sqrtPriceBottom)) / ((sqrtPriceBottom * sqrtPriceTop) / E18);
     }
     uint256 supplyData;
     if (ranges[index].supplyCoefficient != 0) {
@@ -425,7 +419,8 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   ) private returns (uint256 amount1ToAdd) {
     if (!ranges[index].activated) activate(index);
     (
-      /*unused*/,
+      ,
+      /*unused*/
       uint256 reserve1,
       uint256 sqrtPriceBottom,
       uint256 sqrtPriceTop
@@ -460,7 +455,6 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       uint256 amount1
     )
   {
-
     require(initialized, 'Pm0');
     require(highestRangeIndex >= lowestRangeIndex, 'Pm1');
     HelpData memory h = HelpData({lastBalance0: lastBalance0, lastBalance1: lastBalance1, balance0: 0, balance1: 0, value00: 0, value01: 0, value10: 0, value11: 0});
@@ -470,6 +464,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     _ticketData[ticketId].lowestRangeIndex = lowestRangeIndex;
     _ticketData[ticketId].highestRangeIndex = highestRangeIndex;
     _ticketData[ticketId].liqAdded = liqToAdd;
+    _ticketData[ticketId].owner = to;
     if (lowestRangeIndex > usingRange) //in this case ranges.reserve1 should be 0
     {
       for (int24 i = highestRangeIndex; i >= lowestRangeIndex; i--) {
@@ -488,11 +483,11 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       for (int24 i = usingRange - 1; i >= lowestRangeIndex; i--) {
         amount1 += _printOnTicket1(i, ticketId, liqToAdd);
       }
-      (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(usingRange);  // reserve0, reserve1, sqrtPriceBot, sqrtPriceTop
+      (h.value00, h.value01, h.value10, h.value11) = getRangeInfo(usingRange); // reserve0, reserve1, sqrtPriceBot, sqrtPriceTop
       uint256 liqCoefBefore = PoolHelper.liqCoefficient(h.value00, h.value01, h.value10, h.value11);
       uint256 amount0ToAdd;
       uint256 amount1ToAdd;
-      if ( (h.value00 == 0 && h.value01 == 0 ) || liqCoefBefore == 0) {
+      if ((h.value00 == 0 && h.value01 == 0) || liqCoefBefore == 0) {
         amount0ToAdd = (liqToAdd * E18 * (h.value11 - h.value10)) / (h.value10 * h.value11) / 2;
         amount1ToAdd = (liqToAdd * (h.value11 - h.value10)) / E18 / 2;
       } else {
@@ -526,7 +521,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   ///
   ///	REDEEM LIQ
   ///
-  
+
   /// @notice method that reads from ticket data used for ranges out of current Price
   /// @param index of range that we are reading from
   /// @param ticketId Id of ticket that is beeing burned
@@ -555,7 +550,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   /// inherit doc from IDesreSwapV0Pool
   function burn(address to, uint256 ticketId) external override returns (uint256, uint256) {
     require(_exists(ticketId), 'Pb0');
-    if(!(msg.sender == ownerOf(ticketId))){
+    if (!(msg.sender == ownerOf(ticketId))) {
       require(_isApprovedOrOwner(_msgSender(), ticketId), 'Pb1');
       require(tx.origin == ownerOf(ticketId));
     }
@@ -647,21 +642,21 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     uint256 multiplier = sqrtRangeMultiplier;
     uint256 multiplier100 = sqrtRangeMultiplier100;
     while (_startingInUseRange > 0) {
-      if(_startingInUseRange > 100){
-       startingSqrtPriceBottom_ = (startingSqrtPriceBottom_ * multiplier100) / E18;
-      _startingInUseRange = _startingInUseRange - 100;
-      }else{
-      startingSqrtPriceBottom_ = (startingSqrtPriceBottom_ * multiplier) / E18;
-      _startingInUseRange--;
+      if (_startingInUseRange > 100) {
+        startingSqrtPriceBottom_ = (startingSqrtPriceBottom_ * multiplier100) / E18;
+        _startingInUseRange = _startingInUseRange - 100;
+      } else {
+        startingSqrtPriceBottom_ = (startingSqrtPriceBottom_ * multiplier) / E18;
+        _startingInUseRange--;
       }
     }
     while (_startingInUseRange < 0) {
-      if(_startingInUseRange > 100){
-       startingSqrtPriceBottom_ = (startingSqrtPriceBottom_ * E18) / multiplier100;
-      _startingInUseRange = _startingInUseRange + 100;
-      }else{
-      startingSqrtPriceBottom_ = (startingSqrtPriceBottom_ * E18) / multiplier;
-      _startingInUseRange++;
+      if (_startingInUseRange > 100) {
+        startingSqrtPriceBottom_ = (startingSqrtPriceBottom_ * E18) / multiplier100;
+        _startingInUseRange = _startingInUseRange + 100;
+      } else {
+        startingSqrtPriceBottom_ = (startingSqrtPriceBottom_ * E18) / multiplier;
+        _startingInUseRange++;
       }
     }
     return startingSqrtPriceBottom_;
