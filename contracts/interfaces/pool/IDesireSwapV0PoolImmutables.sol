@@ -12,6 +12,9 @@ interface IDesireSwapV0PoolImmutables {
 /// @return return address of token1
   function token1() external view returns (address);
 
+/// @return return ticks in ranges
+  function ticksInRange() external view returns (uint256);
+
 /// @return sqrtRangeMultiplier which describes price ranges of pools
   function sqrtRangeMultiplier() external view returns (uint256);
 

@@ -37,7 +37,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
   uint256 private constant E18 = 10**18;
   uint256 private constant E6 = 10**6;
   uint256 private constant TICK_SIZE = 1000049998750062496;
-  uint256 private immutable ticksInRange;
+  uint256 public immutable override ticksInRange;
   uint256 public immutable override sqrtRangeMultiplier; // example: 100100000.... is 1.001 (* 10**)
   uint256 public immutable sqrtRangeMultiplier100; // sqrtRangeMultipier**100
   uint256 public immutable override fee; //  0 fee is 0 // 100% fee is 1* 10**6;

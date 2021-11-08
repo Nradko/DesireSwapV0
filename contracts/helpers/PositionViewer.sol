@@ -69,13 +69,14 @@ contract PositionViewer {
   function getPositionData(address poolAddress, uint256 ticketId) public view returns (PositionData memory) {
     IDesireSwapV0Pool pool = IDesireSwapV0Pool(poolAddress);
     (uint256 amount0, uint256 amount1) = getAmounts(poolAddress, ticketId);
+    int24 ticksInRange = int24(uint24(pool.ticksInRange()));
     PositionData memory data = PositionData({
       poolAddress: poolAddress,
       token0: pool.token0(),
       token1: pool.token1(),
       ticketId: ticketId,
-      lowestTick: pool.getTicketData(ticketId).lowestRangeIndex,
-      highestTick: pool.getTicketData(ticketId).highestRangeIndex,
+      lowestTick: pool.getTicketData(ticketId).lowestRangeIndex * ticksInRange,
+      highestTick: (pool.getTicketData(ticketId).highestRangeIndex + 1) * ticksInRange,
       amount0: amount0,
       amount1: amount1,
       feeAmount: pool.fee(),
