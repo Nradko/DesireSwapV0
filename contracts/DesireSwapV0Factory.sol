@@ -50,14 +50,13 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
       ticksInRange_--;
     }
     uint256 sqrtRangeMultiplier100_ = E18;
-    for(uint256 step = 0; step < 100; step++){
-      sqrtRangeMultiplier100_ = sqrtRangeMultiplier100_ * sqrtRangeMultiplier_ /E18;
+    for (uint256 step = 0; step < 100; step++) {
+      sqrtRangeMultiplier100_ = (sqrtRangeMultiplier100_ * sqrtRangeMultiplier_) / E18;
     }
     feeToPoolType[fee_].sqrtRangeMultiplier = sqrtRangeMultiplier_;
     feeToPoolType[fee_].sqrtRangeMultiplier100 = sqrtRangeMultiplier100_;
     emit NewPoolType(ticksInRange_, fee_);
   }
-
 
   /// inherit doc from IDesreSwapV0Factory
   function createPool(
@@ -76,7 +75,7 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
       swapRouter,
       (tokenA_ < tokenB_ ? tokenA_ : tokenB_),
       (tokenB_ < tokenA_ ? tokenA_ : tokenB_),
-      fee_, 
+      fee_,
       feeToPoolType[fee_].ticksInRange,
       feeToPoolType[fee_].sqrtRangeMultiplier,
       feeToPoolType[fee_].sqrtRangeMultiplier100,
@@ -91,11 +90,18 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
   }
 
   function getPoolType(uint256 fee_)
-  external view override
-  returns (uint256 ticksInRange, uint256 sqrtRangeMultiplier, uint256 sqrtRangeMultiplier100){
+    external
+    view
+    override
+    returns (
+      uint256 ticksInRange,
+      uint256 sqrtRangeMultiplier,
+      uint256 sqrtRangeMultiplier100
+    )
+  {
     ticksInRange = feeToPoolType[fee_].ticksInRange;
     sqrtRangeMultiplier = feeToPoolType[fee_].sqrtRangeMultiplier;
-    sqrtRangeMultiplier100 =  feeToPoolType[fee_].sqrtRangeMultiplier100;
+    sqrtRangeMultiplier100 = feeToPoolType[fee_].sqrtRangeMultiplier100;
   }
 
   /// inherit doc from IDesreSwapV0Factory
@@ -114,5 +120,9 @@ contract DesireSwapV0Factory is IDesireSwapV0Factory {
   function setSwapRouter(address swapRouter_) external override onlyByOwner {
     swapRouter = swapRouter_;
     emit SwapRouterChanged(swapRouter, swapRouter_);
+  }
+
+  function changeAllowance(address contractAddress) external onlyByOwner {
+    allowlisted[contractAddress] = !allowlisted[contractAddress];
   }
 }

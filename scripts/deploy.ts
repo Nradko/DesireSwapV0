@@ -6,7 +6,7 @@ const ethernal = require('hardhat-ethernal');
 import { ContractInput } from 'hardhat-ethernal/dist/src/types';
 import { task } from 'hardhat/config';
 import 'hardhat/types/runtime';
-import { DesireSwapV0Factory, DesireSwapV0Pool, LiquidityManager, LiquidityManagerHelper, PositionViewer, SwapRouter, UniswapInterfaceMulticall } from '../typechain';
+import { DesireSwapV0Factory, DesireSwapV0Pool, LiquidityManager, LiquidityManagerHelper, PositionViewer, SwapRouter, UniswapInterfaceMulticall, Quoter } from '../typechain';
 import { PoolDeployer } from '../typechain/PoolDeployer';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { contractNames, FeeAmount } from './consts';
@@ -48,6 +48,9 @@ async function main() {
     const liqManager = await deployContract<LiquidityManager>(contractNames.liquidityManager, factory.address, owner.address);
     const tHelper = await deployContract<LiquidityManagerHelper>(contractNames.liquidityManagerHelper, factory.address);
     const positionViewer = await deployContract<PositionViewer>(contractNames.positionViewer);
+    const swapQuoter = await deployContract<Quoter>(contractNames.swapQuoter, factory.address, debugOwnerAddress);
+    await factory.changeAllowance(swapQuoter.address);
+    await factory.setSwapRouter(router.address);
 
     const { pool, tokenA, tokenB } = await deployTestTokensAndPool(owner, factory, liqManager, router, debugOwnerAddress);
     await sendEtherToAccount(debugOwnerAddress, 2);
@@ -60,6 +63,7 @@ async function main() {
       [contractNames.liquidityManager]: getContractMetadata(contractNames.liquidityManager, liqManager.address),
       [contractNames.liquidityManagerHelper]: getContractMetadata(contractNames.liquidityManagerHelper, tHelper.address),
       [contractNames.positionViewer]: getContractMetadata(contractNames.positionViewer, positionViewer.address),
+      [contractNames.swapQuoter]: getContractMetadata(contractNames.swapQuoter, swapQuoter.address),
     };
 
     const deployedContractMetadatas = {

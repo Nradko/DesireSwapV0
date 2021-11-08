@@ -74,7 +74,7 @@ contract SwapRouter is ISwapRouter, PeripheryImmutableState, PeripheryValidation
     if (recipient == address(0)) recipient = address(this);
     (address tokenIn, address tokenOut, uint256 fee) = data.path.decodeFirstPool();
     bool zeroForOne = tokenIn < tokenOut;
-    (int256 amount0, int256 amount1) = getPool(tokenIn, tokenOut, fee).swap(recipient, zeroForOne, int256(amountIn), abi.encode(data));
+    (int256 amount0, int256 amount1) = getPool(tokenIn, tokenOut, fee).swap(recipient, zeroForOne, int256(amountIn),0, abi.encode(data));
     return uint256(-(zeroForOne ? amount1 : amount0));
   }
 
@@ -134,7 +134,7 @@ contract SwapRouter is ISwapRouter, PeripheryImmutableState, PeripheryValidation
 
     bool zeroForOne = tokenIn < tokenOut;
 
-    (int256 amount0Delta, int256 amount1Delta) = getPool(tokenIn, tokenOut, fee).swap(recipient, zeroForOne, -int256(amountOut), abi.encode(data));
+    (int256 amount0Delta, int256 amount1Delta) = getPool(tokenIn, tokenOut, fee).swap(recipient, zeroForOne, -int256(amountOut),0, abi.encode(data));
 
     uint256 amountOutReceived;
     (amountIn, amountOutReceived) = zeroForOne ? (uint256(amount0Delta), uint256(-amount1Delta)) : (uint256(amount1Delta), uint256(-amount0Delta));

@@ -57,10 +57,10 @@ library PoolHelper {
     require(liq > 0, 'HAIn');
     if (zeroForOne) {
       amountIn = ((liq * liq) / (reserve1 + (liq * sqrt0) / E18 - amountOut) - (reserve0 + (liq * E18) / sqrt1));
-      if(amountIn>0) amountIn++;
+      if (amountIn > 0) amountIn++;
     } else {
-    amountIn = ((liq * liq) / (reserve0 + (liq * E18) / sqrt1 - amountOut) - (reserve1 + (liq * sqrt0) / E18)); // dim = 0
-    if(amountIn>0) amountIn++;
+      amountIn = ((liq * liq) / (reserve0 + (liq * E18) / sqrt1 - amountOut) - (reserve1 + (liq * sqrt0) / E18)); // dim = 0
+      if (amountIn > 0) amountIn++;
     }
   }
 
@@ -74,13 +74,12 @@ library PoolHelper {
   ) internal pure returns (uint256 amountOut) {
     if (amountIn == 0) return 0;
     uint256 liq = liqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
-    require(liq > 0, 'HAOut');
     if (zeroForOne) {
       amountOut = ((reserve1 + (liq * sqrt0) / E18) - (liq * liq) / (reserve0 + (liq * E18) / sqrt1 + amountIn));
-      if(amountOut > 1) amountOut--;
-    } else{
-      amountOut =  ((reserve0 + (liq * E18) / sqrt1) - (liq * liq) / (reserve1 + (liq * sqrt0) / E18 + amountIn));
-      if(amountOut > 1) amountOut--;
+      if (amountOut > 1) amountOut--;
+    } else {
+      amountOut = ((reserve0 + (liq * E18) / sqrt1) - (liq * liq) / (reserve1 + (liq * sqrt0) / E18 + amountIn));
+      if (amountOut > 1) amountOut--;
     }
   }
 }

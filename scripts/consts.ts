@@ -10,6 +10,7 @@ export const contractNames = {
   token: 'TestERC20',
   pool: 'DesireSwapV0Pool',
   positionViewer: 'PositionViewer',
+  swapQuoter: 'Quoter',
 };
 
 export enum FeeAmount {
