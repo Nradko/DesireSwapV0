@@ -39,6 +39,7 @@ library PoolHelper {
     uint256 sqrt0,
     uint256 sqrt1
   ) internal pure returns (uint256) {
+    require(sqrt1>0, 'H0');
     uint256 b = (x * sqrt0) / E18 + (y * E18) / sqrt1;
     uint256 _sqrt = sqrt(b**2 + 4 * ((x * y * (E18 - (sqrt0 * E18) / sqrt1)) / E18));
     return (((b + _sqrt) * E18) / (2 * (E18 - (E18 * sqrt0) / sqrt1)));
