@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 /// @notice A fork of Multicall2 specifically tailored for the Uniswap Interface
-contract UniswapInterfaceMulticall {
+contract DSMulticall {
   struct Call {
     address target;
     uint256 gasLimit;
