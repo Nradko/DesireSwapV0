@@ -54,7 +54,6 @@ library PoolHelper {
   ) internal pure returns (uint256 amountIn) {
     if (amountOut == 0) return 0;
     uint256 liq = liqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
-    require(liq > 0, 'HAIn');
     if (zeroForOne) {
       amountIn = ((liq * liq) / (reserve1 + (liq * sqrt0) / E18 - amountOut) - (reserve0 + (liq * E18) / sqrt1));
       if (amountIn > 0) amountIn++;
