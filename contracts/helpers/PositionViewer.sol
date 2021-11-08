@@ -104,4 +104,25 @@ contract PositionViewer {
     }
     return (positionDataList);
   }
+
+   function inUseInfo(address poolAddress)
+    public
+    view
+    returns (
+      int24 lowestActiveTick,
+      uint256 sqrtCurrentPrice,
+      uint256 inUseLiq,
+      uint256 inUseReserve0,
+      uint256 inUseReserve1
+    )
+  {
+    IDesireSwapV0Pool pool = IDesireSwapV0Pool(poolAddress);
+    int24 inUseRange = pool.inUseRange();
+    lowestActiveTick = inUseRange * int24(int256(pool.ticksInRange()));
+    (uint256 reserve0, uint256 reserve1, uint256 sqrt0, uint256 sqrt1, ,) = pool.getFullRangeInfo(inUseRange);
+    inUseLiq = PoolHelper.liqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
+    sqrtCurrentPrice = (inUseLiq * E18) / (reserve0 + (inUseLiq * E18) / sqrt1);
+    inUseReserve0 = reserve0;
+    inUseReserve1 = reserve1;
+  }
 }
