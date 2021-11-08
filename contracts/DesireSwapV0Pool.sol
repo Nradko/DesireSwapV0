@@ -641,7 +641,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     uint256 multiplier = sqrtRangeMultiplier;
     uint256 multiplier100 = sqrtRangeMultiplier100;
     while (_startingInUseRange > 0) {
-      if (_startingInUseRange > 100) {
+      if (_startingInUseRange >= 100) {
         startingSqrtPriceBottom_ = (startingSqrtPriceBottom_ * multiplier100) / E18;
         _startingInUseRange = _startingInUseRange - 100;
       } else {
@@ -650,7 +650,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       }
     }
     while (_startingInUseRange < 0) {
-      if (_startingInUseRange > 100) {
+      if (_startingInUseRange <=100) {
         startingSqrtPriceBottom_ = (startingSqrtPriceBottom_ * E18) / multiplier100;
         _startingInUseRange = _startingInUseRange + 100;
       } else {
