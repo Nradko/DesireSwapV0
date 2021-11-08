@@ -162,7 +162,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
     )
   {
     usingRange = inUseRange * int24(int256(ticksInRange));
-    (uint256 reserve0, uint256 reserve1, uint256 sqrt0, uint256 sqrt1) = getRangeInfo(usingRange);
+    (uint256 reserve0, uint256 reserve1, uint256 sqrt0, uint256 sqrt1) = getRangeInfo(inUseRange);
     inUseLiq = PoolHelper.liqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
     sqrtCurrentPrice = (inUseLiq * E18) / (reserve0 + (inUseLiq * E18) / sqrt1);
     inUseReserve0 = reserve0;
@@ -650,7 +650,7 @@ contract DesireSwapV0Pool is Ticket, IDesireSwapV0Pool {
       }
     }
     while (_startingInUseRange < 0) {
-      if (_startingInUseRange <=100) {
+      if (_startingInUseRange <= 100) {
         startingSqrtPriceBottom_ = (startingSqrtPriceBottom_ * E18) / multiplier100;
         _startingInUseRange = _startingInUseRange + 100;
       } else {
