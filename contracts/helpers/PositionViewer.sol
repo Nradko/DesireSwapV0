@@ -109,7 +109,7 @@ contract PositionViewer {
     public
     view
     returns (
-      int24 lowestActiveTick,
+      int24 bottomActiveTick,
       uint256 sqrtCurrentPrice,
       uint256 inUseLiq,
       uint256 inUseReserve0,
@@ -118,11 +118,44 @@ contract PositionViewer {
   {
     IDesireSwapV0Pool pool = IDesireSwapV0Pool(poolAddress);
     int24 inUseRange = pool.inUseRange();
-    lowestActiveTick = inUseRange * int24(int256(pool.ticksInRange()));
+    bottomActiveTick = inUseRange * int24(int256(pool.ticksInRange()));
     (uint256 reserve0, uint256 reserve1, uint256 sqrt0, uint256 sqrt1, ,) = pool.getFullRangeInfo(inUseRange);
     inUseLiq = PoolHelper.liqCoefficient(reserve0, reserve1, sqrt0, sqrt1);
     sqrtCurrentPrice = (inUseLiq * E18) / (reserve0 + (inUseLiq * E18) / sqrt1);
     inUseReserve0 = reserve0;
     inUseReserve1 = reserve1;
+  }
+
+  struct GraphData{
+    int24 bottomActiveTick;
+    uint256 liquidity;
+    uint256 price0;
+  }
+  
+  function getGraphData(address poolAddress, int24 range)
+  public
+  view
+  returns(GraphData memory)
+  {
+    IDesireSwapV0Pool pool = IDesireSwapV0Pool(poolAddress);
+    (uint256 reserve0, uint256 reserve1, uint256 sqrt0, uint256 sqrt1, ,) = pool.getFullRangeInfo(range);
+    return GraphData({
+      bottomActiveTick: range * int24(int256(pool.ticksInRange())),
+      liquidity: PoolHelper.liqCoefficient(reserve0, reserve1, sqrt0, sqrt1),
+      price0 : sqrt0*sqrt0/E18
+    });
+  }
+
+  function graphData(address poolAddress)
+  public
+  view
+  returns(GraphData[] memory graphDataList)
+  {
+    IDesireSwapV0Pool pool = IDesireSwapV0Pool(poolAddress);
+    int24 inUseRange = pool.inUseRange();
+    graphDataList = new GraphData[](401);
+    for (int i  = 0; i<= 400; i++){
+      graphDataList[uint256(i)] = getGraphData(poolAddress, inUseRange - int24(200 + i));
+    }
   }
 }
