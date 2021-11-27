@@ -119,7 +119,7 @@ const deployMultipleTestTokensAndPool = async (owner: SignerWithAddress, factory
     PoolFactory.attach(poolAddress[2]) as DesireSwapV0Pool,
     PoolFactory.attach(poolAddress[3]) as DesireSwapV0Pool,
   ];
-  const startingInUseRanges = [0, 100, 100, 0];
+  const startingInUseRanges = [0, tokenUSDC.address < tokenA.address ? 5540 : -5540, tokenUSDC.address < tokenB.address ? 5540 : -5540, 0];
   console.log('initializing and activating poolList...');
   for (let step = 0; step < poolList.length; step++) {
     console.log('initialize');
